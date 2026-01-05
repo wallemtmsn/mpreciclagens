@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MP Reciclagem • Calculadora de Compra</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <div class="brand">
+      <div class="logo">MP</div>
+      <div class="brand-text">
+        <h1>MP Reciclagem</h1>
+        <p>Calculadora de compra de materiais</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <div class="card-title">
+        <h2>Novo item</h2>
+        <button id="btnOpenPrices" class="btn btn-ghost" type="button">Editar preços</button>
+      </div>
+
+      <form id="formItem" class="form">
+        <label class="field">
+          <span>Material</span>
+          <select id="materialSelect" required></select>
+        </label>
+
+                <label class="field">
+          <span>Peso (kg)</span>
+          <input
+            id="pesoInput"
+            type="number"
+            inputmode="decimal"
+            step="0.001"
+            min="0"
+            placeholder="Ex.: 1,300"
+            required
+          />
+          <small class="hint">Use vírgula com 3 casas: <b>1,300</b> = 1 kg e 300 g. (Ex.: 250 g = <b>0,250</b>)</small>
+        </label>
+
+        <div class="grid-2">
+          <div class="metric">
+            <span class="metric-label">Preço por kg</span>
+            <strong id="precoKg" class="metric-value">R$ 0,00</strong>
+          </div>
+
+          <div class="metric">
+            <span class="metric-label">Total do item</span>
+            <strong id="totalItem" class="metric-value">R$ 0,00</strong>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" type="submit">Adicionar</button>
+          <button id="btnClearInputs" class="btn btn-secondary" type="button">Limpar</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="card-title">
+        <h2>Itens do atendimento</h2>
+        <button id="btnClearAll" class="btn btn-ghost" type="button">Zerar lista</button>
+      </div>
+
+      <div class="list-head">
+        <span>Material</span>
+        <span class="right">Peso (kg/g)</span>
+        <span class="right">Preço/kg</span>
+        <span class="right">Total</span>
+        <span></span>
+      </div>
+
+      <ul id="itensList" class="list" aria-live="polite"></ul>
+
+      <div class="total-box">
+        <span>Total geral</span>
+        <strong id="totalGeral">R$ 0,00</strong>
+      </div>
+    </section>
+
+    <!-- Modal de preços -->
+    <dialog id="pricesDialog" class="dialog">
+      <form method="dialog" class="dialog-content">
+        <div class="dialog-title">
+          <h3>Editar preços (R$/kg)</h3>
+          <button class="btn btn-ghost" value="cancel" aria-label="Fechar">✕</button>
+        </div>
+
+        <div id="pricesForm" class="prices-form"></div>
+
+        <div class="dialog-actions">
+          <button id="btnResetPrices" class="btn btn-secondary" type="button">Restaurar padrão</button>
+          <button id="btnSavePrices" class="btn btn-primary" value="default" type="button">Salvar</button>
+        </div>
+      </form>
+    </dialog>
+  </main>
+
+  <footer class="footer">
+    <small>MP Reciclagem • Uso interno</small>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
