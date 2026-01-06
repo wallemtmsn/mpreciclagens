@@ -14,15 +14,18 @@
 
 *{ box-sizing:border-box; }
 html,body{ height:100%; }
+
 body{
   margin:0;
-  background: radial-gradient(1200px 600px at 20% -10%, rgba(34,197,94,.18), transparent 55%),
-              radial-gradient(900px 500px at 90% 10%, rgba(59,130,246,.14), transparent 50%),
-              var(--bg);
+  background:
+    radial-gradient(1200px 600px at 20% -10%, rgba(34,197,94,.18), transparent 55%),
+    radial-gradient(900px 500px at 90% 10%, rgba(59,130,246,.14), transparent 50%),
+    var(--bg);
   color:var(--text);
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
+/* ================= HEADER ================= */
 .app-header{
   position: sticky;
   top:0;
@@ -31,6 +34,7 @@ body{
   border-bottom:1px solid var(--border);
   z-index:10;
 }
+
 .brand{
   max-width: 1100px;
   margin:0 auto;
@@ -39,31 +43,35 @@ body{
   gap:12px;
   align-items:center;
 }
+
 .logo{
   width:44px; height:44px;
-  display:grid; place-items:center;
-  border-radius: 14px;
+  display:grid;
+  place-items:center;
+  border-radius:14px;
   background: linear-gradient(135deg, rgba(34,197,94,.25), rgba(34,197,94,.06));
   border:1px solid rgba(34,197,94,.35);
   font-weight:800;
   letter-spacing:.5px;
 }
+
 .brand-text h1{
   margin:0;
-  font-size: 16px;
+  font-size:16px;
 }
 .brand-text p{
   margin:2px 0 0;
-  color: var(--muted);
-  font-size: 12px;
+  color:var(--muted);
+  font-size:12px;
 }
 
+/* ================= LAYOUT ================= */
 .container{
   max-width:1100px;
-  margin: 0 auto;
-  padding: 16px;
+  margin:0 auto;
+  padding:16px;
   display:grid;
-  gap: 14px;
+  gap:14px;
 }
 
 .card{
@@ -71,7 +79,7 @@ body{
   border:1px solid var(--border);
   border-radius: var(--radius2);
   box-shadow: var(--shadow);
-  padding: 14px;
+  padding:14px;
 }
 
 .card-title{
@@ -79,62 +87,76 @@ body{
   align-items:center;
   justify-content:space-between;
   gap:10px;
-  margin-bottom: 10px;
-}
-.card-title h2{
-  margin:0;
-  font-size: 15px;
+  margin-bottom:10px;
 }
 
+.card-title h2{
+  margin:0;
+  font-size:15px;
+}
+
+/* ================= FORM ================= */
 .form{
   display:grid;
-  gap: 12px;
+  gap:12px;
 }
 
 .field{
   display:grid;
   gap:6px;
 }
+
 .field > span{
-  font-size: 12px;
-  color: var(--muted);
+  font-size:12px;
+  color:var(--muted);
 }
+
 input, select{
   width:100%;
-  padding: 12px 12px;
-  border-radius: 14px;
+  padding:12px;
+  border-radius:14px;
   border:1px solid var(--border);
   background: rgba(255,255,255,.04);
-  color: var(--text);
+  color:var(--text);
   outline:none;
 }
+
 input:focus, select:focus{
   border-color: rgba(34,197,94,.55);
   box-shadow: 0 0 0 3px rgba(34,197,94,.12);
 }
-.hint{ color: var(--muted); font-size: 11px; }
 
+.hint{
+  color:var(--muted);
+  font-size:11px;
+}
+
+/* ================= MÉTRICAS ================= */
 .grid-2{
   display:grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-.metric{
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 10px 12px;
-  background: rgba(255,255,255,.03);
-}
-.metric-label{
-  display:block;
-  color: var(--muted);
-  font-size: 12px;
-  margin-bottom: 2px;
-}
-.metric-value{
-  font-size: 16px;
+  gap:12px;
 }
 
+.metric{
+  border:1px solid var(--border);
+  border-radius: var(--radius);
+  padding:10px 12px;
+  background: rgba(255,255,255,.03);
+}
+
+.metric-label{
+  display:block;
+  color:var(--muted);
+  font-size:12px;
+  margin-bottom:2px;
+}
+
+.metric-value{
+  font-size:16px;
+}
+
+/* ================= BOTÕES ================= */
 .actions{
   display:flex;
   gap:10px;
@@ -143,162 +165,175 @@ input:focus, select:focus{
 
 .btn{
   border:1px solid transparent;
-  border-radius: 14px;
-  padding: 11px 12px;
-  font-weight: 700;
+  border-radius:14px;
+  padding:11px 12px;
+  font-weight:700;
   cursor:pointer;
-  color: var(--text);
+  color:var(--text);
   background: rgba(255,255,255,.06);
 }
-.btn:hover{ filter: brightness(1.06); }
-.btn:active{ transform: translateY(1px); }
+
+.btn:hover{ filter:brightness(1.06); }
+.btn:active{ transform:translateY(1px); }
 
 .btn-primary{
   background: linear-gradient(180deg, var(--primary), var(--primary-2));
   border-color: rgba(34,197,94,.35);
 }
+
 .btn-secondary{
   background: rgba(255,255,255,.06);
   border-color: var(--border);
 }
+
 .btn-ghost{
   background: transparent;
   border-color: var(--border);
-  color: var(--muted);
+  color:var(--muted);
 }
 
-.list-head{
-  display:none;
-  grid-template-columns: 1.2fr .7fr .8fr .9fr auto;
-  gap:10px;
-  padding: 8px 6px;
-  color: var(--muted);
-  font-size: 12px;
-  border-bottom:1px solid var(--border);
-}
-
+/* ================= LISTA DE ITENS ================= */
 .list{
   list-style:none;
   padding:0;
-  margin: 6px 0 0;
+  margin:6px 0 0;
   display:grid;
-  gap: 10px;
+  gap:10px;
 }
 
 .item{
   display:grid;
   grid-template-columns: 1fr auto;
-  gap: 10px;
-  padding: 12px;
+  gap:10px;
+  padding:12px;
   border-radius: var(--radius);
-  border: 1px solid var(--border);
+  border:1px solid var(--border);
   background: rgba(255,255,255,.03);
 }
+
 .item .meta{
   display:grid;
-  gap: 6px;
+  gap:6px;
 }
+
 .item .title{
-  font-weight: 800;
+  font-weight:800;
   letter-spacing:.2px;
 }
-.item .sub{
-  display:flex;
-  gap: 10px;
-  flex-wrap:wrap;
-  color: var(--muted);
-  font-size: 12px;
+
+/* 🔹 NOVO BLOCO – SEMPRE VISÍVEL */
+.item-info{
+  margin-top:4px;
+  display:grid;
+  gap:4px;
+  font-size:13px;
+  color:#cbd5e1;
 }
-.item .sub b{ color: var(--text); font-weight: 800; }
 
-.right{ text-align:right; }
+.item-info b{
+  color:var(--text);
+}
 
+/* compatibilidade antiga (não usar mais) */
+.item .sub{
+  display:none;
+}
+
+/* ================= AÇÕES ================= */
 .icon-btn{
-  width: 40px;
-  height: 40px;
-  border-radius: 14px;
+  width:40px;
+  height:40px;
+  border-radius:14px;
   border:1px solid var(--border);
   background: transparent;
-  color: var(--danger);
+  color:var(--danger);
   cursor:pointer;
 }
-.icon-btn:hover{ background: rgba(239,68,68,.08); }
 
+.icon-btn:hover{
+  background: rgba(239,68,68,.08);
+}
+
+/* ================= TOTAL ================= */
 .total-box{
-  margin-top: 12px;
+  margin-top:12px;
   display:flex;
   align-items:center;
   justify-content:space-between;
   border-top:1px solid var(--border);
-  padding-top: 12px;
-  font-size: 14px;
-}
-.total-box strong{
-  font-size: 18px;
+  padding-top:12px;
+  font-size:14px;
 }
 
+.total-box strong{
+  font-size:18px;
+}
+
+/* ================= FOOTER ================= */
 .footer{
   max-width:1100px;
-  margin: 0 auto;
-  padding: 18px 16px 28px;
-  color: var(--muted);
+  margin:0 auto;
+  padding:18px 16px 28px;
+  color:var(--muted);
 }
 
-/* Desktop */
-@media (min-width: 900px){
+/* ================= DESKTOP ================= */
+@media (min-width:900px){
   .container{
     grid-template-columns: 1fr 1.2fr;
     align-items:start;
   }
-  .list-head{
-    display:grid;
-  }
-  .item{
-    grid-template-columns: 1.2fr .7fr .8fr .9fr auto;
-    align-items:center;
-  }
-  .item .meta{ gap: 2px; }
-  .item .sub{ display:none; }
 }
+
+/* ================= DIALOG ================= */
 .dialog{
   width: min(720px, 92vw);
   border:1px solid var(--border);
-  border-radius: 18px;
+  border-radius:18px;
   background: rgba(17,24,38,.96);
-  color: var(--text);
+  color:var(--text);
   box-shadow: var(--shadow);
-  padding: 0;
+  padding:0;
 }
+
 .dialog::backdrop{
   background: rgba(0,0,0,.55);
 }
+
 .dialog-content{
-  padding: 14px;
+  padding:14px;
 }
+
 .dialog-title{
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:10px;
-  margin-bottom: 8px;
+  margin-bottom:8px;
 }
+
 .dialog-title h3{
   margin:0;
-  font-size: 15px;
+  font-size:15px;
 }
+
 .prices-form{
   display:grid;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 10px;
+  gap:10px;
+  margin-top:10px;
 }
+
 .dialog-actions{
-  margin-top: 12px;
+  margin-top:12px;
   display:flex;
   justify-content:flex-end;
   gap:10px;
   flex-wrap:wrap;
 }
-@media (max-width: 520px){
-  .prices-form{ grid-template-columns: 1fr; }
+
+@media (max-width:520px){
+  .prices-form{
+    grid-template-columns: 1fr;
+  }
 }

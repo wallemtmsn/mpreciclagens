@@ -1,23 +1,32 @@
-// MP Reciclagem • Calculadora de compra
-// Mobile-first, com lista de itens e total geral. Preços persistem no LocalStorage.
+/* =====================================================
+   MP RECICLAGEM - CALCULADORA DE COMPRA
+   - Peso digitado como na balança (1,300 = 1kg 300g)
+   - Persistência em localStorage
+   - Confirmação de fechamento
+   - Envio automático para WhatsApp fixo
+===================================================== */
 
-const STORAGE_KEY = "mp_reciclagem_precos_v1";
+const WHATSAPP_NUMBER = "5522998303157";
+const STORAGE_KEY_ITENS = "mp_itens_dia";
+const STORAGE_KEY_PRECOS = "mp_precos";
 
+// Preços padrão (R$/kg)
 const defaultPrices = {
   "Plástico": 2.50,
   "Ferro": 0.70,
   "Alumínio": 6.50,
   "Papelão": 0.35,
-  "Antimônio": 0.00, // ajuste conforme tabela real
+  "Antimônio": 0.00,
   "Cobre": 28.00,
   "Latão": 18.00,
-  "Inox": 4.50,
-  "Vidro": 0.10
+  "Inox": 4.50
 };
 
+// ---------- Estado ----------
 let prices = loadPrices();
-let itens = [];
+let itens = loadItens();
 
+// ---------- Elementos ----------
 const materialSelect = document.getElementById("materialSelect");
 const pesoInput = document.getElementById("pesoInput");
 const precoKgEl = document.getElementById("precoKg");
@@ -29,23 +38,25 @@ const formItem = document.getElementById("formItem");
 const btnClearInputs = document.getElementById("btnClearInputs");
 const btnClearAll = document.getElementById("btnClearAll");
 
-// dialog
 const pricesDialog = document.getElementById("pricesDialog");
 const btnOpenPrices = document.getElementById("btnOpenPrices");
 const pricesForm = document.getElementById("pricesForm");
 const btnSavePrices = document.getElementById("btnSavePrices");
 const btnResetPrices = document.getElementById("btnResetPrices");
 
+// ---------- Inicialização ----------
 init();
 
 function init() {
   renderMaterialOptions();
+  renderItens();
+  updateTotalGeral();
   syncPriceAndTotal();
 
   materialSelect.addEventListener("change", syncPriceAndTotal);
-pesoInput.addEventListener("input", syncPriceAndTotal);
+  pesoInput.addEventListener("input", syncPriceAndTotal);
 
-  formItem.addEventListener("submit", (e) => {
+  formItem.addEventListener("submit", e => {
     e.preventDefault();
     addItem();
   });
@@ -57,28 +68,27 @@ pesoInput.addEventListener("input", syncPriceAndTotal);
   });
 
   btnClearAll.addEventListener("click", () => {
+    if (!confirm("Deseja zerar todos os itens do dia?")) return;
     itens = [];
+    saveItens();
     renderItens();
     updateTotalGeral();
   });
 
-  // Modal de preços
+  // Preços
   btnOpenPrices.addEventListener("click", () => {
     renderPricesEditor();
     pricesDialog.showModal();
   });
 
   btnSavePrices.addEventListener("click", () => {
-    const newPrices = {};
-    const inputs = pricesForm.querySelectorAll("input[data-material]");
-    inputs.forEach((inp) => {
-      const material = inp.dataset.material;
-      const val = parseNumber(inp.value);
-      newPrices[material] = isFinite(val) && val >= 0 ? val : 0;
+    const novos = {};
+    pricesForm.querySelectorAll("input").forEach(inp => {
+      novos[inp.dataset.material] = parseNumber(inp.value) || 0;
     });
 
-    prices = newPrices;
-    savePrices(prices);
+    prices = novos;
+    savePrices();
     renderMaterialOptions(true);
     syncPriceAndTotal();
     pricesDialog.close();
@@ -86,59 +96,35 @@ pesoInput.addEventListener("input", syncPriceAndTotal);
 
   btnResetPrices.addEventListener("click", () => {
     prices = { ...defaultPrices };
-    savePrices(prices);
+    savePrices();
     renderPricesEditor();
     renderMaterialOptions(true);
     syncPriceAndTotal();
   });
 }
 
-function renderMaterialOptions(keepSelection = false) {
-  const current = keepSelection ? materialSelect.value : null;
-
-  materialSelect.innerHTML = "";
-  Object.keys(prices).forEach((material) => {
-    const opt = document.createElement("option");
-    opt.value = material;
-    opt.textContent = material;
-    materialSelect.appendChild(opt);
-  });
-
-  if (keepSelection && current && prices[current] !== undefined) {
-    materialSelect.value = current;
-  }
-}
-
-function syncPriceAndTotal() {
-  const material = materialSelect.value;
-  const priceKg = prices[material] ?? 0;
-
-  const pesoKg = parseNumber(pesoInput.value);
-  const total = (isFinite(pesoKg) ? pesoKg : 0) * priceKg;
-
-  precoKgEl.textContent = formatBRL(priceKg);
-  totalItemEl.textContent = formatBRL(total);
-}
-
+// ---------- Funções principais ----------
 function addItem() {
   const material = materialSelect.value;
-  const priceKg = prices[material] ?? 0;
+  const precoKg = prices[material] || 0;
   const pesoKg = parseNumber(pesoInput.value);
-if (!isFinite(pesoKg) || pesoKg <= 0) {
-    alert("Informe um peso válido maior que zero.");
-    pesoInput.focus();
+
+  if (!pesoKg || pesoKg <= 0) {
+    alert("Informe um peso válido. Ex.: 1,300");
     return;
   }
 
-  const total = pesoKg * priceKg;
-  itens.unshift({
+  const total = pesoKg * precoKg;
+
+  itens.push({
     id: crypto.randomUUID(),
     material,
-pesoKg,
-    priceKg,
+    pesoKg,
+    precoKg,
     total
   });
 
+  saveItens();
   renderItens();
   updateTotalGeral();
 
@@ -151,162 +137,189 @@ function renderItens() {
   itensList.innerHTML = "";
 
   if (itens.length === 0) {
-    const empty = document.createElement("li");
-    empty.className = "item";
-    empty.innerHTML = `
-      <div class="meta">
-        <div class="title">Nenhum item adicionado</div>
-        <div class="sub">Adicione materiais para calcular o total do atendimento.</div>
-      </div>
-      <div></div>
+    itensList.innerHTML = `
+      <li class="item">
+        <div class="meta">
+          <div class="title">Nenhum item lançado</div>
+        </div>
+      </li>
     `;
-    itensList.appendChild(empty);
     return;
   }
 
-  itens.forEach((it) => {
+  itens.forEach(item => {
     const li = document.createElement("li");
     li.className = "item";
 
-    // Desktop mostra colunas; mobile mostra resumo
     li.innerHTML = `
       <div class="meta">
-        <div class="title">${escapeHtml(it.material)}</div>
-        <div class="sub">
-          <span>Peso: <b>${formatPesoDetalhado(it.pesoKg)}</b></span>
-          <span>Preço/kg: <b>${formatBRL(it.priceKg)}</b></span>
-          <span>Total: <b>${formatBRL(it.total)}</b></span>
+        <div class="title">${item.material}</div>
+
+        <div class="item-info">
+          <div><b>Peso:</b> ${formatKg(item.pesoKg)}</div>
+          <div><b>Valor/kg:</b> ${formatBRL(item.precoKg)}</div>
+          <div><b>Total:</b> ${formatBRL(item.total)}</div>
         </div>
       </div>
 
-      <div class="right desktop-only">${formatPesoDetalhado(it.pesoKg)}</div>
-      <div class="right desktop-only">${formatBRL(it.priceKg)}</div>
-      <div class="right desktop-only"><b>${formatBRL(it.total)}</b></div>
-
-      <button class="icon-btn" type="button" aria-label="Remover">🗑</button>
+      <button class="icon-btn" title="Remover item">🗑</button>
     `;
 
-    // Ajuste para desktop: inserir colunas extras via CSS (desktop-only)
-    // Em mobile, as colunas extras não aparecem (por grid 1fr auto), então mantemos só meta+botão.
-    // Para desktop, o CSS redefine as colunas e as divs desktop-only entram como células.
-    const removeBtn = li.querySelector("button");
-    removeBtn.addEventListener("click", () => {
-      itens = itens.filter(x => x.id !== it.id);
+    li.querySelector("button").onclick = () => {
+      itens = itens.filter(i => i.id !== item.id);
+      saveItens();
       renderItens();
       updateTotalGeral();
-    });
+    };
 
-    // Em mobile, esconder as divs desktop-only:
-    li.querySelectorAll(".desktop-only").forEach(el => {
-      el.style.display = "none";
-    });
-
-    // Em desktop, o CSS esconde .sub e mostra as colunas — então reexibimos via media query usando JS:
-    // (solução simples: ao redimensionar, re-renderiza)
     itensList.appendChild(li);
   });
-
-  // Re-render ao mudar para desktop
-  window.onresize = () => {
-    const isDesktop = window.matchMedia("(min-width: 900px)").matches;
-    itensList.querySelectorAll(".desktop-only").forEach(el => {
-      el.style.display = isDesktop ? "block" : "none";
-    });
-  };
-  window.onresize();
 }
 
 function updateTotalGeral() {
-  const total = itens.reduce((acc, it) => acc + it.total, 0);
+  const total = itens.reduce((s, i) => s + i.total, 0);
   totalGeralEl.textContent = formatBRL(total);
 }
 
+function syncPriceAndTotal() {
+  const material = materialSelect.value;
+  const precoKg = prices[material] || 0;
+  const pesoKg = parseNumber(pesoInput.value) || 0;
 
-function renderPricesEditor() {
-  pricesForm.innerHTML = "";
-  Object.entries(prices).forEach(([material, price]) => {
-    const wrap = document.createElement("label");
-    wrap.className = "field";
-    wrap.innerHTML = `
-      <span>${escapeHtml(material)}</span>
-      <input data-material="${escapeHtml(material)}" type="number" step="0.01" min="0" value="${price}" />
-    `;
-    pricesForm.appendChild(wrap);
+  precoKgEl.textContent = formatBRL(precoKg);
+  totalItemEl.textContent = formatBRL(pesoKg * precoKg);
+}
+
+// ---------- WhatsApp ----------
+function abrirConfirmacaoFechamento() {
+  if (itens.length === 0) {
+    alert("Não há itens para fechar o dia.");
+    return;
+  }
+
+  const total = itens.reduce((s, i) => s + i.total, 0);
+
+  if (!confirm(`Fechar o dia?\n\nItens: ${itens.length}\nTotal: ${formatBRL(total)}`)) {
+    return;
+  }
+
+  enviarResumoWhatsApp();
+}
+
+function enviarResumoWhatsApp() {
+  const data = new Date().toLocaleDateString("pt-BR");
+  const hora = new Date().toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+
+  let msg = `♻️ *MP RECICLAGEM*\n`;
+  msg += `📅 *Resumo do dia:* ${data}\n\n`;
+  msg += `────────────────\n📦 *ITENS COMPRADOS*\n\n`;
+
+  itens.forEach(i => {
+    msg += `• *${i.material}*\n`;
+    msg += `  Peso: ${formatKg(i.pesoKg)}\n`;
+    msg += `  Valor/kg: ${formatBRL(i.precoKg)}\n`;
+    msg += `  Total: ${formatBRL(i.total)}\n\n`;
+  });
+
+  const totalGeral = itens.reduce((s, i) => s + i.total, 0);
+
+  msg += `────────────────\n💰 *TOTAL DO DIA:* ${formatBRL(totalGeral)}\n`;
+  msg += `🕒 Fechamento: ${hora}`;
+
+  window.open(
+    `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`,
+    "_blank"
+  );
+
+  itens = [];
+  saveItens();
+  renderItens();
+  updateTotalGeral();
+}
+
+// ---------- Utilidades ----------
+function formatBRL(v) {
+  return v.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL"
   });
 }
 
-// Helpers
-function formatBRL(value) {
-  return (value || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+function formatKg(v) {
+  return v.toLocaleString("pt-BR", {
+    minimumFractionDigits: 3,
+    maximumFractionDigits: 3
+  }) + " kg";
 }
-function formatKg(value) {
-  return (value || 0).toLocaleString("pt-BR", { minimumFractionDigits: 3, maximumFractionDigits: 3 }) + " kg";
+
+function parseNumber(v) {
+  if (!v) return 0;
+  return Number(String(v).replace(",", "."));
 }
 
-function formatPesoDetalhado(pesoKg) {
-  const kgText = formatKg(pesoKg);
-  if (!isFinite(pesoKg) || pesoKg <= 0) return kgText;
+// ---------- Materiais ----------
+function renderMaterialOptions(keep) {
+  const atual = keep ? materialSelect.value : null;
+  materialSelect.innerHTML = "";
 
-  // Quebra em kg + gramas (3 casas decimais) para leitura rápida
-  let kgInt = Math.floor(pesoKg);
-  let gramas = Math.round((pesoKg - kgInt) * 1000);
+  Object.keys(prices).forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m;
+    opt.textContent = m;
+    materialSelect.appendChild(opt);
+  });
 
-  // Ajuste de arredondamento (ex.: 1,9995 -> 2,000)
-  if (gramas === 1000) {
-    kgInt += 1;
-    gramas = 0;
+  if (atual && prices[atual] !== undefined) {
+    materialSelect.value = atual;
   }
-
-  // Exibe também em gramas quando for menos que 1 kg
-  if (kgInt === 0) {
-    return `${kgText} (${gramas} g)`;
-  }
-
-  return `${kgText} (${kgInt} kg ${gramas} g)`;
 }
 
-function parseNumber(raw) {
-  if (raw === null || raw === undefined) return NaN;
-
-  // Aceita formatos pt-BR e en-US:
-  // - "1,300" => 1.300  (1 kg e 300 g)
-  // - "0,250" => 0.250  (250 g)
-  // - "1.300" => 1.300  (ponto como decimal)
-  // - "1 300,50" => 1300.50
-  const s0 = String(raw).trim().replace(/\s+/g, "");
-  if (!s0) return NaN;
-
-  // Se tem vírgula, assume vírgula como decimal e remove pontos (milhar)
-  if (s0.includes(",")) {
-    const s = s0.replace(/\./g, "").replace(",", ".");
-    return Number(s);
-  }
-
-  // Se não tem vírgula, assume ponto como decimal (não remove pontos)
-  const s = s0.replace(/,/g, "");
-  return Number(s);
+function renderPricesEditor() {
+  pricesForm.innerHTML = "";
+  Object.entries(prices).forEach(([m, v]) => {
+    pricesForm.innerHTML += `
+      <label class="field">
+        <span>${m}</span>
+        <input type="number" step="0.01" value="${v}" data-material="${m}">
+      </label>
+    `;
+  });
 }
 
-function savePrices(obj) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+// ---------- Storage (à prova de erro) ----------
+function saveItens() {
+  localStorage.setItem(STORAGE_KEY_ITENS, JSON.stringify(itens));
 }
+
+function loadItens() {
+  return JSON.parse(localStorage.getItem(STORAGE_KEY_ITENS)) || [];
+}
+
+function savePrices() {
+  localStorage.setItem(STORAGE_KEY_PRECOS, JSON.stringify(prices));
+}
+
 function loadPrices() {
   try {
-    const s = localStorage.getItem(STORAGE_KEY);
-    if (!s) return { ...defaultPrices };
-    const parsed = JSON.parse(s);
-    // garante que seja um objeto básico
-    if (!parsed || typeof parsed !== "object") return { ...defaultPrices };
-    return parsed;
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_PRECOS));
+
+    if (!saved || Object.keys(saved).length === 0) {
+      localStorage.setItem(
+        STORAGE_KEY_PRECOS,
+        JSON.stringify(defaultPrices)
+      );
+      return { ...defaultPrices };
+    }
+
+    return saved;
   } catch {
+    localStorage.setItem(
+      STORAGE_KEY_PRECOS,
+      JSON.stringify(defaultPrices)
+    );
     return { ...defaultPrices };
   }
-}
-function escapeHtml(str) {
-  return String(str)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }
