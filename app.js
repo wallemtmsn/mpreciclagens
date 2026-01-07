@@ -121,10 +121,17 @@ function atualizarEstadoUI() {
   btnFinalizarCompra.disabled =
     !temCompraAtiva || compraAtiva.itens.length === 0;
 
-  formItem.querySelectorAll("input, select, button").forEach(el => {
-    el.disabled = !temCompraAtiva;
+  // Material sempre visível
+  materialSelect.disabled = false;
+
+  // Peso e ações só com compra ativa
+  pesoInput.disabled = !temCompraAtiva;
+
+  formItem.querySelectorAll("button").forEach(btn => {
+    btn.disabled = !temCompraAtiva;
   });
 }
+
 
 // ---------- COMPRA ----------
 function novaCompra() {
