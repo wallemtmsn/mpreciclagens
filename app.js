@@ -1147,10 +1147,39 @@ function parseNumber(v) {
   if (!v && v !== 0) return 0;
   
   let str = String(v).trim();
-  str = str.replace(/\./g, '').replace(',', '.');
-  str = str.replace(/[^\d.-]/g, '');
+  
+  // Remove qualquer letra (como o "l" em "1.0l")
+  str = str.replace(/[^\d,.-]/g, '');
+  
+  // Se tem vírgula E ponto, assume que ponto é separador de milhar
+  if (str.includes(',') && str.includes('.')) {
+    // Remove pontos (separadores de milhar)
+    str = str.replace(/\./g, '');
+    // Substitui vírgula por ponto (decimal)
+    str = str.replace(',', '.');
+  }
+  // Se só tem vírgula, assume que é decimal
+  else if (str.includes(',')) {
+    str = str.replace(',', '.');
+  }
+  // Se só tem ponto, verifica se é decimal ou milhar
+  else if (str.includes('.')) {
+    // Conta quantos dígitos após o ponto
+    const parts = str.split('.');
+    if (parts[1].length <= 3) {
+      // Até 3 dígitos após o ponto, assume decimal (ex: 1.500)
+      // Mantém como está
+    } else {
+      // Mais de 3 dígitos, assume que ponto é separador de milhar
+      str = str.replace(/\./g, '');
+    }
+  }
   
   const num = parseFloat(str);
+  
+  // NÃO converter automaticamente gramas para kg
+  // O usuário deve digitar corretamente: 0,250 para 250g
+  
   return isNaN(num) ? 0 : num;
 }
 
