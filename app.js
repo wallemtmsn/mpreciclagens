@@ -7,7 +7,7 @@
    - Histórico de compras com detalhes
 ===================================================== */
 
-const WHATSAPP_NUMBER = "5522998303157";
+const WHATSAPP_NUMBER = "5522998232597";
 const WHATSAPP_SUPORTE = "5522998303157";
 const STORAGE_KEY_PRECOS = "mp_precos";
 const STORAGE_KEY_COMPRAS_DIA = "mp_compras_dia";
