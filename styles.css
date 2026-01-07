@@ -338,3 +338,183 @@ input:focus, select:focus{
     grid-template-columns: 1fr;
   }
 }
+
+/* ================= NOVOS ESTILOS ================= */
+
+/* Seção de compras finalizadas */
+#comprasFinalizadasSection {
+  transition: all 0.3s ease;
+}
+
+/* Lista de detalhes no modal */
+.list-detalhes {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.item-detalhe {
+  padding: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.item-detalhe:last-child {
+  border-bottom: none;
+}
+
+.detalhe-meta {
+  display: grid;
+  gap: 4px;
+}
+
+.detalhe-title {
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.detalhe-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.detalhe-info div {
+  display: flex;
+  justify-content: space-between;
+}
+
+.detalhes-header {
+  background: rgba(255,255,255,0.03);
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+.detalhes-info {
+  display: grid;
+  gap: 6px;
+  font-size: 14px;
+}
+
+.detalhes-vazio {
+  text-align: center;
+  color: var(--muted);
+  padding: 20px;
+  font-style: italic;
+}
+
+.detalhes-content {
+  min-width: 300px;
+  max-width: 500px;
+}
+
+/* Contador de compras */
+#contadorCompras {
+  background: rgba(34, 197, 94, 0.15);
+  color: var(--primary);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Toast notifications */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
+/* Melhorias para itens clicáveis */
+.item[style*="cursor: pointer"]:hover {
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(34,197,94,0.3);
+  transform: translateY(-1px);
+  transition: all 0.2s ease;
+}
+
+.btn-remover-compra {
+  opacity: 0.7;
+}
+
+.btn-remover-compra:hover {
+  opacity: 1;
+  background: rgba(239,68,68,0.1);
+}
+
+/* ================= BOTÃO DE SUPORTE ================= */
+.btn-suporte {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: linear-gradient(135deg, #25D366, #128C7E);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
+  z-index: 100;
+  transition: all 0.3s ease;
+}
+
+.btn-suporte:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 25px rgba(37, 211, 102, 0.6);
+}
+
+.btn-suporte:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 15px rgba(37, 211, 102, 0.4);
+}
+
+.btn-suporte svg {
+  flex-shrink: 0;
+}
+
+/* Para telas menores, botão menor */
+@media (max-width: 768px) {
+  .btn-suporte {
+    bottom: 16px;
+    right: 16px;
+    padding: 12px 20px;
+    font-size: 14px;
+  }
+  
+  .btn-suporte span {
+    display: none; /* Esconde texto em telas pequenas */
+  }
+  
+  .btn-suporte {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    justify-content: center;
+    padding: 0;
+  }
+}

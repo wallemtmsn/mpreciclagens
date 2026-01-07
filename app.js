@@ -4,6 +4,7 @@
    - Peso digitado como na balança (1,300 = 1kg 300g)
    - Persistência em localStorage
    - Envio automático para WhatsApp fixo
+   - Histórico de compras com detalhes
 ===================================================== */
 
 const WHATSAPP_NUMBER = "5522998303157";
@@ -37,13 +38,18 @@ const precoKgEl = document.getElementById("precoKg");
 const totalItemEl = document.getElementById("totalItem");
 const itensList = document.getElementById("itensList");
 const totalGeralEl = document.getElementById("totalGeral");
+const totalDiaEl = document.getElementById("totalDia");
+const contadorComprasEl = document.getElementById("contadorCompras");
+const comprasList = document.getElementById("comprasList");
 
 const formItem = document.getElementById("formItem");
+const btnAddItem = document.getElementById("btnAddItem");
 const btnClearInputs = document.getElementById("btnClearInputs");
 const btnClearAll = document.getElementById("btnClearAll");
 
 const btnNovaCompra = document.getElementById("btnNovaCompra");
 const btnFinalizarCompra = document.getElementById("btnFinalizarCompra");
+const btnFecharDia = document.getElementById("btnFecharDia");
 
 const pricesDialog = document.getElementById("pricesDialog");
 const btnOpenPrices = document.getElementById("btnOpenPrices");
@@ -51,12 +57,17 @@ const pricesForm = document.getElementById("pricesForm");
 const btnSavePrices = document.getElementById("btnSavePrices");
 const btnResetPrices = document.getElementById("btnResetPrices");
 
+const detalhesDialog = document.getElementById("detalhesDialog");
+const detalhesTitulo = document.getElementById("detalhesTitulo");
+const detalhesConteudo = document.getElementById("detalhesConteudo");
+
 // ---------- Inicialização ----------
 init();
 
 function init() {
   renderMaterialOptions();
   renderItens();
+  renderComprasDia();
   updateTotais();
   syncPriceAndTotal();
   atualizarEstadoUI();
@@ -85,7 +96,7 @@ function init() {
   // Cancelar compra
   btnClearAll.addEventListener("click", () => {
     if (!compraAtiva) return;
-    if (!confirm("Cancelar a compra atual?")) return;
+    if (!confirm("Cancelar a compra atual? Todos os itens serão perdidos.")) return;
     compraAtiva = null;
     saveCompraAtiva();
     renderItens();
@@ -96,6 +107,7 @@ function init() {
   // Event listeners para botões principais
   btnNovaCompra.addEventListener("click", novaCompra);
   btnFinalizarCompra.addEventListener("click", finalizarCompra);
+  btnFecharDia.addEventListener("click", fecharDiaWhatsApp);
 
   // Preços
   btnOpenPrices.addEventListener("click", () => {
@@ -167,23 +179,138 @@ function renderPricesEditor() {
   });
 }
 
+function renderComprasDia() {
+  comprasList.innerHTML = "";
+  
+  if (comprasDia.length === 0) {
+    comprasList.innerHTML = `
+      <li class="item">
+        <div class="meta">
+          <div class="title">Nenhuma compra finalizada</div>
+          <div class="item-info">As compras finalizadas aparecerão aqui</div>
+        </div>
+      </li>
+    `;
+    contadorComprasEl.textContent = "0 compras";
+    return;
+  }
+  
+  contadorComprasEl.textContent = `${comprasDia.length} compra${comprasDia.length !== 1 ? 's' : ''}`;
+  
+  // Ordena por ID (mais recente primeiro)
+  const comprasOrdenadas = [...comprasDia].sort((a, b) => {
+    return parseInt(b.idCompra) - parseInt(a.idCompra);
+  });
+  
+  comprasOrdenadas.forEach((compra, idx) => {
+    const li = document.createElement("li");
+    li.className = "item";
+    li.style.cursor = "pointer";
+    
+    // Conta quantos itens de cada material
+    const resumoMateriais = {};
+    compra.itens.forEach(item => {
+      resumoMateriais[item.material] = (resumoMateriais[item.material] || 0) + 1;
+    });
+    
+    const resumoTexto = Object.entries(resumoMateriais)
+      .map(([mat, qtd]) => `${qtd}× ${mat}`)
+      .join(", ");
+    
+    li.innerHTML = `
+      <div class="meta">
+        <div class="title">Compra #${compra.idCompra}</div>
+        <div class="item-info">
+          <div><b>Total:</b> ${formatBRL(compra.totalCompra || 0)}</div>
+          <div><b>Itens:</b> ${compra.itens.length} (${resumoTexto})</div>
+          <div><small>Clique para ver detalhes</small></div>
+        </div>
+      </div>
+      <button class="icon-btn btn-remover-compra" data-index="${idx}" aria-label="Remover compra">🗑</button>
+    `;
+    
+    // Clique para ver detalhes
+    li.querySelector(".meta").addEventListener("click", () => {
+      mostrarDetalhesCompra(compra);
+    });
+    
+    // Botão para remover compra
+    li.querySelector(".btn-remover-compra").addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (confirm(`Remover a compra #${compra.idCompra}?`)) {
+        comprasDia.splice(idx, 1);
+        saveComprasDia();
+        renderComprasDia();
+        updateTotais();
+      }
+    });
+    
+    comprasList.appendChild(li);
+  });
+}
+
+function mostrarDetalhesCompra(compra) {
+  detalhesTitulo.textContent = `Compra #${compra.idCompra} - ${formatBRL(compra.totalCompra || 0)}`;
+  
+  let html = `
+    <div class="detalhes-header">
+      <div class="detalhes-info">
+        <div><strong>ID:</strong> ${compra.idCompra}</div>
+        <div><strong>Total:</strong> ${formatBRL(compra.totalCompra || 0)}</div>
+        <div><strong>Quantidade de itens:</strong> ${compra.itens.length}</div>
+      </div>
+    </div>
+    
+    <div class="detalhes-itens">
+      <h4>Itens da compra:</h4>
+  `;
+  
+  if (compra.itens.length === 0) {
+    html += `<p class="detalhes-vazio">Nenhum item nesta compra.</p>`;
+  } else {
+    html += `<ul class="list-detalhes">`;
+    
+    compra.itens.forEach((item, idx) => {
+      html += `
+        <li class="item-detalhe">
+          <div class="detalhe-meta">
+            <div class="detalhe-title">${item.material}</div>
+            <div class="detalhe-info">
+              <div><b>Peso:</b> ${formatKg(item.pesoKg)}</div>
+              <div><b>Preço/kg:</b> ${formatBRL(item.precoKg)}</div>
+              <div><b>Subtotal:</b> ${formatBRL(item.total)}</div>
+            </div>
+          </div>
+        </li>
+      `;
+    });
+    
+    html += `</ul>`;
+  }
+  
+  html += `</div>`;
+  detalhesConteudo.innerHTML = html;
+  detalhesDialog.showModal();
+}
+
 // ---------- CONTROLE DE ESTADO UI ----------
 function atualizarEstadoUI() {
   const temCompraAtiva = !!compraAtiva;
 
   btnNovaCompra.disabled = temCompraAtiva;
-  btnFinalizarCompra.disabled =
-    !temCompraAtiva || compraAtiva.itens.length === 0;
-
+  btnFinalizarCompra.disabled = !temCompraAtiva || compraAtiva.itens.length === 0;
+  
   // Material sempre visível
   materialSelect.disabled = false;
 
   // Peso e ações só com compra ativa
   pesoInput.disabled = !temCompraAtiva;
-
-  formItem.querySelectorAll("button").forEach(btn => {
-    btn.disabled = !temCompraAtiva;
-  });
+  btnAddItem.disabled = !temCompraAtiva;
+  btnClearInputs.disabled = !temCompraAtiva;
+  
+  // Mostra/oculta seção de compras finalizadas
+  const comprasSection = document.getElementById("comprasFinalizadasSection");
+  comprasSection.style.display = comprasDia.length === 0 ? "none" : "block";
 }
 
 // ---------- COMPRA ----------
@@ -200,21 +327,34 @@ function novaCompra() {
   renderItens();
   updateTotais();
   atualizarEstadoUI();
+  
+  // Feedback visual
+  materialSelect.focus();
+  showToast(`Compra #${seq} iniciada!`);
 }
 
 function finalizarCompra() {
   if (!compraAtiva || compraAtiva.itens.length === 0) return;
 
   compraAtiva.totalCompra = compraAtiva.itens.reduce((s, i) => s + i.total, 0);
+  compraAtiva.dataFinalizacao = new Date().toISOString();
   comprasDia.push(compraAtiva);
 
   saveComprasDia();
+  
+  const idCompra = compraAtiva.idCompra;
+  const totalCompra = compraAtiva.totalCompra;
+  
   compraAtiva = null;
   saveCompraAtiva();
 
   renderItens();
+  renderComprasDia();
   updateTotais();
   atualizarEstadoUI();
+  
+  // Feedback
+  showToast(`Compra #${idCompra} finalizada: ${formatBRL(totalCompra)}`);
 }
 
 // ---------- Itens ----------
@@ -261,6 +401,7 @@ function renderItens() {
       <li class="item">
         <div class="meta">
           <div class="title">Nenhuma compra ativa</div>
+          <div class="item-info">Inicie uma nova compra para começar</div>
         </div>
       </li>
     `;
@@ -292,7 +433,7 @@ function renderItens() {
           <div><b>Total:</b> ${formatBRL(item.total)}</div>
         </div>
       </div>
-      <button class="icon-btn">🗑</button>
+      <button class="icon-btn" aria-label="Remover item">🗑</button>
     `;
 
     li.querySelector("button").onclick = () => {
@@ -316,6 +457,7 @@ function updateTotais() {
   const totalDia = comprasDia.reduce((s, c) => s + c.totalCompra, 0);
 
   totalGeralEl.textContent = formatBRL(totalDia + totalCompra);
+  totalDiaEl.textContent = formatBRL(totalDia);
 }
 
 function syncPriceAndTotal() {
@@ -339,21 +481,41 @@ function fecharDiaWhatsApp() {
   msg += `────────────────\n🧾 *COMPRAS DO DIA*\n\n`;
 
   comprasDia.forEach(c => {
-    msg += `Compra #${c.idCompra}\n`;
-    msg += `Total: ${formatBRL(c.totalCompra)}\n\n`;
+    msg += `*Compra #${c.idCompra}*\n`;
+    msg += `• Itens: ${c.itens.length}\n`;
+    
+    // Resumo por material
+    const resumo = {};
+    c.itens.forEach(item => {
+      resumo[item.material] = (resumo[item.material] || 0) + 1;
+    });
+    
+    Object.entries(resumo).forEach(([mat, qtd]) => {
+      msg += `  - ${qtd}x ${mat}\n`;
+    });
+    
+    msg += `• Total: ${formatBRL(c.totalCompra)}\n\n`;
   });
 
   const totalDia = comprasDia.reduce((s, c) => s + c.totalCompra, 0);
-  msg += `────────────────\n💰 *TOTAL DO DIA:* ${formatBRL(totalDia)}`;
+  msg += `────────────────\n💰 *TOTAL DO DIA:* ${formatBRL(totalDia)}\n`;
+  msg += `📊 *Total de compras:* ${comprasDia.length}`;
 
   window.open(
     `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`,
     "_blank"
   );
 
+  // Limpa após enviar
   comprasDia = [];
   localStorage.removeItem(STORAGE_KEY_COMPRAS_DIA);
   localStorage.removeItem(STORAGE_KEY_SEQ_DIA);
+  
+  renderComprasDia();
+  updateTotais();
+  atualizarEstadoUI();
+  
+  showToast("Dia fechado e enviado para WhatsApp!");
 }
 
 // ---------- Utilidades ----------
@@ -371,6 +533,41 @@ function formatKg(v) {
 function parseNumber(v) {
   if (!v) return 0;
   return Number(String(v).replace(",", "."));
+}
+
+function showToast(mensagem) {
+  // Cria toast se não existir
+  let toast = document.getElementById("toast");
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = "toast";
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--primary);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      z-index: 1000;
+      opacity: 0;
+      transform: translateY(-20px);
+      transition: opacity 0.3s, transform 0.3s;
+      font-size: 14px;
+      font-weight: 500;
+    `;
+    document.body.appendChild(toast);
+  }
+  
+  toast.textContent = mensagem;
+  toast.style.opacity = "1";
+  toast.style.transform = "translateY(0)";
+  
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    toast.style.transform = "translateY(-20px)";
+  }, 3000);
 }
 
 // ---------- Sequência diária ----------

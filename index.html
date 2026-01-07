@@ -5,28 +5,38 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MP Reciclagem • Compras de Materiais</title>
   <link rel="stylesheet" href="styles.css" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>♻️</text></svg>">
 </head>
 
 <body>
   <!-- HEADER -->
   <header class="app-header">
     <div class="brand">
-      <div class="logo" aria-hidden="true">MP</div>
+      <div class="logo">MP</div>
       <div class="brand-text">
         <h1>MP Reciclagem</h1>
         <p>Controle de compras por atendimento</p>
       </div>
     </div>
+    
+    <!-- BOTÃO DE SUPORTE -->
+    <button id="btnSuporte" class="btn-suporte" aria-label="Falar com suporte no WhatsApp">
+      <span>Suporte</span>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C6.477 2 2 6.477 2 12C2 13.396 2.334 14.715 2.934 15.882L2.023 21.977L8.118 21.066C9.285 21.666 10.604 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2Z" 
+              fill="currentColor"/>
+        <path d="M17.065 14.425C16.826 14.186 16.427 14.066 16.108 14.186C15.789 14.306 14.872 14.786 14.673 14.905C14.474 15.024 14.315 15.004 14.155 14.785C13.996 14.566 13.477 13.687 13.317 13.408C13.158 13.129 13.198 12.97 13.278 12.851C13.437 12.612 13.597 12.293 13.677 12.054C13.757 11.815 13.677 11.616 13.597 11.457C13.517 11.298 12.999 9.959 12.759 9.401C12.52 8.843 12.281 8.923 12.082 8.923C11.883 8.923 11.644 8.883 11.445 8.883C11.246 8.883 10.967 8.963 10.728 9.242C10.489 9.521 9.691 10.32 9.691 11.776C9.691 13.232 10.569 14.665 10.728 14.905C10.888 15.144 12.162 17.145 14.394 18.082C15.071 18.362 15.63 18.521 16.108 18.641C16.746 18.801 17.345 18.761 17.824 18.641C18.303 18.521 19.58 17.904 19.899 17.225C20.218 16.546 20.218 15.944 20.138 15.824C20.058 15.704 19.819 15.625 19.58 15.465C19.341 15.305 18.023 14.545 17.824 14.426C17.625 14.307 17.305 14.664 17.065 14.425Z" 
+              fill="white"/>
+      </svg>
+    </button>
   </header>
 
   <!-- CONTEÚDO -->
   <main class="container">
 
     <!-- CONTROLE DA COMPRA -->
-    <section class="card" aria-labelledby="compra-title">
+    <section class="card">
       <div class="card-title">
-        <h2 id="compra-title">Compra / Atendimento</h2>
+        <h2>Compra / Atendimento</h2>
       </div>
 
       <div class="actions">
@@ -34,8 +44,6 @@
           id="btnNovaCompra"
           class="btn btn-primary"
           style="flex:1"
-          type="button"
-          aria-label="Iniciar nova compra"
         >
           ➕ Nova Compra
         </button>
@@ -44,8 +52,6 @@
           id="btnFinalizarCompra"
           class="btn btn-secondary"
           style="flex:1"
-          type="button"
-          aria-label="Finalizar compra atual"
         >
           ✔ Finalizar Compra
         </button>
@@ -57,10 +63,10 @@
     </section>
 
     <!-- NOVO ITEM -->
-    <section class="card" aria-labelledby="novo-item-title">
+    <section class="card">
       <div class="card-title">
-        <h2 id="novo-item-title">Novo item</h2>
-        <button id="btnOpenPrices" class="btn btn-ghost" type="button" aria-label="Abrir configuração de preços">
+        <h2>Novo item</h2>
+        <button id="btnOpenPrices" class="btn btn-ghost" type="button">
           Editar preços
         </button>
       </div>
@@ -68,9 +74,7 @@
       <form id="formItem" class="form">
         <label class="field">
           <span>Material</span>
-          <select id="materialSelect" required aria-label="Selecione o tipo de material">
-            <!-- Opções serão geradas pelo JavaScript -->
-          </select>
+          <select id="materialSelect" required></select>
         </label>
 
         <label class="field">
@@ -83,31 +87,30 @@
             min="0"
             placeholder="Ex.: 1,300"
             required
-            aria-describedby="peso-hint"
           />
-          <small id="peso-hint" class="hint">
+          <small class="hint">
             Use o valor da balança.<br>
             <b>1,300</b> = 1 kg e 300 g • <b>0,250</b> = 250 g
           </small>
         </label>
 
         <div class="grid-2">
-          <div class="metric" aria-live="polite">
+          <div class="metric">
             <span class="metric-label">Preço por kg</span>
             <strong id="precoKg" class="metric-value">R$ 0,00</strong>
           </div>
 
-          <div class="metric" aria-live="polite">
+          <div class="metric">
             <span class="metric-label">Total do item</span>
             <strong id="totalItem" class="metric-value">R$ 0,00</strong>
           </div>
         </div>
 
         <div class="actions">
-          <button class="btn btn-primary" type="submit" id="btnAddItem" aria-label="Adicionar item à compra">
+          <button id="btnAddItem" class="btn btn-primary" type="submit">
             Adicionar item
           </button>
-          <button id="btnClearInputs" class="btn btn-secondary" type="button" aria-label="Limpar campos de entrada">
+          <button id="btnClearInputs" class="btn btn-secondary" type="button">
             Limpar
           </button>
         </div>
@@ -115,26 +118,41 @@
     </section>
 
     <!-- ITENS DA COMPRA ATIVA -->
-    <section class="card" aria-labelledby="itens-title">
+    <section class="card">
       <div class="card-title">
-        <h2 id="itens-title">Itens da compra ativa</h2>
-        <button id="btnClearAll" class="btn btn-ghost" type="button" aria-label="Cancelar compra atual">
+        <h2>Itens da compra ativa</h2>
+        <button id="btnClearAll" class="btn btn-ghost" type="button">
           Cancelar compra
         </button>
       </div>
 
-      <ul id="itensList" class="list" aria-live="polite" aria-label="Lista de itens da compra"></ul>
+      <ul id="itensList" class="list" aria-live="polite"></ul>
 
-      <div class="total-box" aria-live="polite">
+      <div class="total-box">
         <span>Total (dia + compra ativa)</span>
         <strong id="totalGeral">R$ 0,00</strong>
       </div>
     </section>
 
-    <!-- FECHAMENTO DO DIA -->
-    <section class="card" aria-labelledby="fechamento-title">
+    <!-- COMPRAS FINALIZADAS DO DIA -->
+    <section class="card" id="comprasFinalizadasSection">
       <div class="card-title">
-        <h2 id="fechamento-title">Fechamento do dia</h2>
+        <h2>Compras finalizadas do dia</h2>
+        <small id="contadorCompras">0 compras</small>
+      </div>
+
+      <ul id="comprasList" class="list"></ul>
+
+      <div class="total-box">
+        <span>Total do dia</span>
+        <strong id="totalDia">R$ 0,00</strong>
+      </div>
+    </section>
+
+    <!-- FECHAMENTO DO DIA -->
+    <section class="card">
+      <div class="card-title">
+        <h2>Fechamento do dia</h2>
       </div>
 
       <div class="actions">
@@ -142,32 +160,49 @@
           id="btnFecharDia"
           class="btn btn-primary"
           style="width:100%;"
-          type="button"
-          aria-label="Fechar dia e enviar relatório por WhatsApp"
         >
           📤 Fechar dia e enviar WhatsApp
         </button>
       </div>
     </section>
 
-    <!-- MODAL DE PREÇOS -->
-    <dialog id="pricesDialog" class="dialog" aria-labelledby="dialog-title">
+    <!-- MODAL DETALHES DA COMPRA -->
+    <dialog id="detalhesDialog" class="dialog">
       <form method="dialog" class="dialog-content">
         <div class="dialog-title">
-          <h3 id="dialog-title">Editar preços (R$/kg)</h3>
-          <button class="btn btn-ghost" value="cancel" aria-label="Fechar modal de preços" autofocus>
+          <h3 id="detalhesTitulo">Detalhes da compra</h3>
+          <button class="btn btn-ghost" value="cancel" aria-label="Fechar">
             ✕
           </button>
         </div>
 
-        <div id="pricesForm" class="prices-form" role="form" aria-label="Formulário de edição de preços"></div>
+        <div id="detalhesConteudo" class="detalhes-content"></div>
+
+        <div class="dialog-actions">
+          <button class="btn btn-primary" type="submit">
+            Fechar
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- MODAL DE PREÇOS -->
+    <dialog id="pricesDialog" class="dialog">
+      <form method="dialog" class="dialog-content">
+        <div class="dialog-title">
+          <h3>Editar preços (R$/kg)</h3>
+          <button class="btn btn-ghost" value="cancel" aria-label="Fechar">
+            ✕
+          </button>
+        </div>
+
+        <div id="pricesForm" class="prices-form"></div>
 
         <div class="dialog-actions">
           <button
             id="btnResetPrices"
             class="btn btn-secondary"
             type="button"
-            aria-label="Restaurar preços padrão"
           >
             Restaurar padrão
           </button>
@@ -175,7 +210,6 @@
             id="btnSavePrices"
             class="btn btn-primary"
             type="button"
-            aria-label="Salvar alterações nos preços"
           >
             Salvar
           </button>
@@ -187,7 +221,7 @@
 
   <!-- FOOTER -->
   <footer class="footer">
-    <small>MP Reciclagem • Uso interno • ♻️</small>
+    <small>MP Reciclagem • Uso interno • Suporte: (22) 99830-3157</small>
   </footer>
 
   <!-- SCRIPT -->
