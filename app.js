@@ -339,8 +339,86 @@ function novaCompra() {
   atualizarEstadoUI();
   
   // Feedback visual
+  showToast(`📋 Compra #${seq} iniciada`, "info");
   materialSelect.focus();
-  showToast(`Compra #${seq} iniciada!`);
+}
+
+// Na função finalizarCompra():
+function finalizarCompra() {
+  if (!compraAtiva || compraAtiva.itens.length === 0) return;
+
+  compraAtiva.totalCompra = compraAtiva.itens.reduce((s, i) => s + i.total, 0);
+  compraAtiva.dataFinalizacao = new Date().toISOString();
+  comprasDia.push(compraAtiva);
+
+  saveComprasDia();
+  
+  const idCompra = compraAtiva.idCompra;
+  const totalCompra = compraAtiva.totalCompra;
+  
+  compraAtiva = null;
+  saveCompraAtiva();
+
+  renderItens();
+  renderComprasDia();
+  updateTotais();
+  atualizarEstadoUI();
+  
+  // Feedback
+  showToast(`✅ Compra #${idCompra} finalizada: ${formatBRL(totalCompra)}`, "sucesso");
+}
+
+// Na função fecharDiaWhatsApp():
+function fecharDiaWhatsApp() {
+  if (comprasDia.length === 0) {
+    // Toast de erro se não houver compras
+    showToast("⚠️ Nenhuma compra finalizada no dia.", "erro");
+    return;
+  }
+  
+  // ... resto do código ...
+  
+  // No final, após limpar:
+  showToast("📤 Relatório enviado para WhatsApp!", "sucesso");
+}
+
+// Na função finalizarCompra():
+function finalizarCompra() {
+  if (!compraAtiva || compraAtiva.itens.length === 0) return;
+
+  compraAtiva.totalCompra = compraAtiva.itens.reduce((s, i) => s + i.total, 0);
+  compraAtiva.dataFinalizacao = new Date().toISOString();
+  comprasDia.push(compraAtiva);
+
+  saveComprasDia();
+  
+  const idCompra = compraAtiva.idCompra;
+  const totalCompra = compraAtiva.totalCompra;
+  
+  compraAtiva = null;
+  saveCompraAtiva();
+
+  renderItens();
+  renderComprasDia();
+  updateTotais();
+  atualizarEstadoUI();
+  
+  // Feedback
+  showToast(`✅ Compra #${idCompra} finalizada: ${formatBRL(totalCompra)}`, "sucesso");
+}
+
+// Na função fecharDiaWhatsApp():
+function fecharDiaWhatsApp() {
+  if (comprasDia.length === 0) {
+    // Toast de erro se não houver compras
+    showToast("⚠️ Nenhuma compra finalizada no dia.", "erro");
+    return;
+  }
+  
+  // ... resto do código ...
+  
+  // No final, após limpar:
+  showToast("📤 Relatório enviado para WhatsApp!", "sucesso");
 }
 
 function finalizarCompra() {
@@ -386,17 +464,23 @@ function addItem() {
     return;
   }
 
+  // Calcula total antes de adicionar
+  const totalItem = pesoKg * precoKg;
+
   compraAtiva.itens.push({
     material,
     pesoKg,
     precoKg,
-    total: pesoKg * precoKg
+    total: totalItem
   });
 
   saveCompraAtiva();
   renderItens();
   updateTotais();
   atualizarEstadoUI();
+
+  // FEEDBACK VISUAL - TOAST
+  showToast(`✅ ${material} adicionado: ${formatKg(pesoKg)} = ${formatBRL(totalItem)}`);
 
   pesoInput.value = "";
   syncPriceAndTotal();
@@ -545,38 +629,76 @@ function parseNumber(v) {
   return Number(String(v).replace(",", "."));
 }
 
-function showToast(mensagem) {
+function showToast(mensagem, tipo = "sucesso") {
   // Cria toast se não existir
   let toast = document.getElementById("toast");
+  
   if (!toast) {
     toast = document.createElement("div");
     toast.id = "toast";
-    toast.style.cssText = `
-      position: fixed;
-      top: 20px;
-      right: 20px;
-      background: var(--primary);
-      color: white;
-      padding: 12px 16px;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      z-index: 1000;
-      opacity: 0;
-      transform: translateY(-20px);
-      transition: opacity 0.3s, transform 0.3s;
-      font-size: 14px;
-      font-weight: 500;
-    `;
     document.body.appendChild(toast);
   }
   
-  toast.textContent = mensagem;
-  toast.style.opacity = "1";
-  toast.style.transform = "translateY(0)";
+  // Define cores baseadas no tipo
+  let bgColor, textColor;
+  switch(tipo) {
+    case "sucesso":
+      bgColor = "var(--primary)"; // Verde
+      textColor = "white";
+      break;
+    case "erro":
+      bgColor = "var(--danger)"; // Vermelho
+      textColor = "white";
+      break;
+    case "info":
+      bgColor = "rgba(59, 130, 246, 0.9)"; // Azul
+      textColor = "white";
+      break;
+    default:
+      bgColor = "var(--primary)";
+      textColor = "white";
+  }
   
+  // Aplica estilos
+  toast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: ${bgColor};
+    color: ${textColor};
+    padding: 12px 20px;
+    border-radius: 10px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+    z-index: 1000;
+    opacity: 0;
+    transform: translateX(100px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    font-size: 14px;
+    font-weight: 500;
+    max-width: 300px;
+    word-break: break-word;
+    border-left: 4px solid rgba(255,255,255,0.3);
+  `;
+  
+  toast.textContent = mensagem;
+  
+  // Anima entrada
+  setTimeout(() => {
+    toast.style.opacity = "1";
+    toast.style.transform = "translateX(0)";
+  }, 10);
+  
+  // Remove após 3 segundos
   setTimeout(() => {
     toast.style.opacity = "0";
-    toast.style.transform = "translateY(-20px)";
+    toast.style.transform = "translateX(100px)";
+    
+    // Remove completamente após animação
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.parentNode.removeChild(toast);
+      }
+    }, 300);
   }, 3000);
 }
 
