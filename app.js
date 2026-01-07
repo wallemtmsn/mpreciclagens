@@ -8,7 +8,7 @@
 ===================================================== */
 
 const WHATSAPP_NUMBER = "5522998303157";
-
+const WHATSAPP_SUPORTE = "5522998303157";
 const STORAGE_KEY_PRECOS = "mp_precos";
 const STORAGE_KEY_COMPRAS_DIA = "mp_compras_dia";
 const STORAGE_KEY_COMPRA_ATIVA = "mp_compra_ativa";
@@ -32,6 +32,8 @@ let compraAtiva = loadCompraAtiva();
 let comprasDia = loadComprasDia();
 
 // ---------- Elementos ----------
+const btnSuporte = document.getElementById("btnSuporte");
+
 const materialSelect = document.getElementById("materialSelect");
 const pesoInput = document.getElementById("pesoInput");
 const precoKgEl = document.getElementById("precoKg");
@@ -75,6 +77,7 @@ function init() {
   // Event listeners
   materialSelect.addEventListener("change", syncPriceAndTotal);
   pesoInput.addEventListener("input", syncPriceAndTotal);
+  btnSuporte.addEventListener("click", abrirSuporteWhatsApp)
   
   // Adiciona foco ao peso quando material é selecionado
   materialSelect.addEventListener("change", () => {
@@ -137,6 +140,13 @@ function init() {
 }
 
 // ---------- RENDERIZAÇÃO ----------
+// ---------- FUNÇÃO DE SUPORTE ----------
+function abrirSuporteWhatsApp() {
+  const mensagem = `Olá! Preciso de suporte com o sistema MP Reciclagem.`;
+  const url = `https://wa.me/${WHATSAPP_SUPORTE}?text=${encodeURIComponent(mensagem)}`;
+  window.open(url, "_blank");
+}
+
 function renderMaterialOptions() {
   const current = materialSelect.value;
   materialSelect.innerHTML = "";
