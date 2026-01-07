@@ -82,21 +82,37 @@ function debugMobile() {
   console.log("=== FIM DEBUG ===");
 }
 
-function checkMobileIssues() {
-  if (window.innerWidth <= 768) { // Se for mobile
-    console.log("Modo mobile detectado - verificando dados...");
+// ---------- CORREÇÃO PARA MOBILE ----------
+function fixMobilePrices() {
+  console.log("=== VERIFICANDO PREÇOS NO MOBILE ===");
+  
+  // Verifica se os preços foram carregados
+  if (!prices || Object.keys(prices).length === 0) {
+    console.log("Preços vazios, forçando recarga...");
     
-    // Verifica se os preços foram carregados
-    setTimeout(() => {
-      if (!prices || Object.keys(prices).length === 0) {
-        console.log("Preços não carregados no mobile - forçando recarga");
-        prices = loadPrices();
-        renderMaterialOptions();
-        syncPriceAndTotal();
-        showToast("📱 Modo mobile - Dados recarregados", "info");
+    // Carrega preços do localStorage manualmente
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_PRECOS);
+      console.log("Dados no localStorage:", saved);
+      
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        console.log("Dados parseados:", parsed);
+        prices = parsed;
+      } else {
+        console.log("Usando preços padrão...");
+        prices = { ...defaultPrices };
+        savePrices(); // Salva no localStorage
       }
-    }, 1000);
+    } catch (error) {
+      console.error("Erro ao carregar preços:", error);
+      prices = { ...defaultPrices };
+      savePrices();
+    }
   }
+  
+  console.log("Preços após correção:", prices);
+  console.log("Materiais disponíveis:", Object.keys(prices));
 }
 
 // ---------- Inicialização ----------
@@ -106,6 +122,15 @@ function init() {
   console.log("Inicializando MP Reciclagem...");
   
   debugMobile();
+  
+  // Correção para mobile
+  if (window.innerWidth <= 768) {
+    console.log("Modo mobile detectado - aplicando correções...");
+    fixMobilePrices();
+  } else {
+    // Carrega normalmente
+    loadAllData();
+  }
   
   // Verifica se todos os elementos DOM existem
   if (!materialSelect || !pesoInput || !precoKgEl) {
@@ -118,9 +143,6 @@ function init() {
     }, 500);
     return;
   }
-  
-  // Carrega dados do localStorage
-  loadAllData();
   
   // Renderiza interface
   renderMaterialOptions();
@@ -137,12 +159,22 @@ function init() {
   console.log("Materiais carregados:", Object.keys(prices).length);
   console.log("Lista de materiais:", Object.keys(prices));
   
-  // Força atualização após 500ms para mobile (caso haja atraso)
+  // Mostra botão de emergência para mobile
+  if (window.innerWidth <= 768) {
+    document.getElementById('mobileFix').style.display = 'block';
+  }
+  
+  // Verificação final
   setTimeout(() => {
-    renderMaterialOptions();
-    syncPriceAndTotal();
-    checkMobileIssues();
-  }, 500);
+    console.log("=== VERIFICAÇÃO FINAL ===");
+    console.log("materialSelect.options:", materialSelect ? materialSelect.options.length : "N/A");
+    console.log("prices keys:", Object.keys(prices));
+    
+    if (materialSelect && materialSelect.options.length === 0) {
+      console.log("Select vazio - forçando recarga...");
+      renderMaterialOptions();
+    }
+  }, 1000);
 }
 
 function loadAllData() {
@@ -296,7 +328,7 @@ function setupEventListeners() {
     });
   }
 
-  // Gerenciamento de materiais - CORRIGIDO
+  // Gerenciamento de materiais
   if (btnGerenciarMateriais) {
     console.log("Configurando evento para btnGerenciarMateriais");
     btnGerenciarMateriais.addEventListener("click", () => {
@@ -334,21 +366,6 @@ function setupEventListeners() {
     });
   } else {
     console.warn("btnGerenciarMateriais não encontrado - pode ser mobile");
-    // Cria fallback se necessário
-    setTimeout(() => {
-      const fallbackBtn = document.querySelector('[data-action="gerenciar-materiais"]');
-      if (fallbackBtn) {
-        fallbackBtn.addEventListener("click", () => {
-          renderMateriaisList();
-          alert("Gerenciar materiais - modal não disponível no mobile");
-        });
-        fallbackBtn.addEventListener("touchstart", (e) => {
-          e.preventDefault();
-          renderMateriaisList();
-          alert("Gerenciar materiais - modal não disponível no mobile");
-        });
-      }
-    }, 1000);
   }
   
   if (btnAddMaterial) {
@@ -403,6 +420,15 @@ function renderMaterialOptions() {
     return;
   }
   
+  console.log("Renderizando materiais. Preços disponíveis:", Object.keys(prices));
+  
+  // Se não houver preços, usa padrão
+  if (Object.keys(prices).length === 0) {
+    console.warn("Sem preços, usando padrão...");
+    prices = { ...defaultPrices };
+    savePrices();
+  }
+  
   const current = materialSelect.value;
   materialSelect.innerHTML = "";
 
@@ -434,6 +460,8 @@ function renderMaterialOptions() {
   } else if (Object.keys(prices).length > 0) {
     materialSelect.value = Object.keys(prices)[0];
   }
+  
+  console.log(`Materiais renderizados: ${materialSelect.options.length} opções`);
 }
 
 function renderPricesEditor() {
@@ -1379,37 +1407,28 @@ function getNextSeqDia() {
   return String(saved.seq).padStart(3, "0");
 }
 
-// ---------- Função auxiliar para recarregar no mobile ----------
-function forceReloadOnMobile() {
-  if (window.innerWidth <= 768) {
-    // Adiciona botão de recarregar se detectar problemas
-    if (!document.getElementById('mobile-reload-btn')) {
-      const btn = document.createElement('button');
-      btn.id = 'mobile-reload-btn';
-      btn.innerHTML = '🔄 Recarregar Dados';
-      btn.style.cssText = `
-        position: fixed;
-        bottom: 70px;
-        right: 10px;
-        background: var(--primary);
-        color: white;
-        border: none;
-        padding: 8px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        z-index: 999;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-      `;
-      btn.onclick = function() {
-        prices = loadPrices();
-        renderMaterialOptions();
-        syncPriceAndTotal();
-        showToast("📱 Dados recarregados para mobile", "info");
-      };
-      document.body.appendChild(btn);
-    }
-  }
+// ---------- FUNÇÃO PARA RECARREGAR DADOS (BOTÃO DE EMERGÊNCIA) ----------
+function forceReloadData() {
+  console.log("Forçando recarga de dados...");
+  
+  // Força recarregar preços
+  prices = loadPrices();
+  
+  // Força renderizar opções
+  renderMaterialOptions();
+  
+  // Atualiza interface
+  syncPriceAndTotal();
+  
+  // Mostra feedback
+  showToast("✅ Preços recarregados!", "sucesso");
+  
+  // Log para debug
+  console.log("Preços recarregados:", prices);
+  console.log("Opções no select:", materialSelect.options.length);
 }
 
-// Inicializa após carregamento
-setTimeout(forceReloadOnMobile, 2000);
+// Mostra botão apenas no mobile
+if (window.innerWidth <= 768) {
+  document.getElementById('mobileFix').style.display = 'block';
+}
