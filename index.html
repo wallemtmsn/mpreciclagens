@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>MP Reciclagem • Compras de Materiais</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>♻️</text></svg>">
 </head>
 
 <body>
   <!-- HEADER -->
   <header class="app-header">
     <div class="brand">
-      <div class="logo">MP</div>
+      <div class="logo" aria-hidden="true">MP</div>
       <div class="brand-text">
         <h1>MP Reciclagem</h1>
         <p>Controle de compras por atendimento</p>
@@ -23,9 +24,9 @@
   <main class="container">
 
     <!-- CONTROLE DA COMPRA -->
-    <section class="card">
+    <section class="card" aria-labelledby="compra-title">
       <div class="card-title">
-        <h2>Compra / Atendimento</h2>
+        <h2 id="compra-title">Compra / Atendimento</h2>
       </div>
 
       <div class="actions">
@@ -33,7 +34,8 @@
           id="btnNovaCompra"
           class="btn btn-primary"
           style="flex:1"
-          onclick="novaCompra()"
+          type="button"
+          aria-label="Iniciar nova compra"
         >
           ➕ Nova Compra
         </button>
@@ -42,7 +44,8 @@
           id="btnFinalizarCompra"
           class="btn btn-secondary"
           style="flex:1"
-          onclick="finalizarCompra()"
+          type="button"
+          aria-label="Finalizar compra atual"
         >
           ✔ Finalizar Compra
         </button>
@@ -54,10 +57,10 @@
     </section>
 
     <!-- NOVO ITEM -->
-    <section class="card">
+    <section class="card" aria-labelledby="novo-item-title">
       <div class="card-title">
-        <h2>Novo item</h2>
-        <button id="btnOpenPrices" class="btn btn-ghost" type="button">
+        <h2 id="novo-item-title">Novo item</h2>
+        <button id="btnOpenPrices" class="btn btn-ghost" type="button" aria-label="Abrir configuração de preços">
           Editar preços
         </button>
       </div>
@@ -65,7 +68,9 @@
       <form id="formItem" class="form">
         <label class="field">
           <span>Material</span>
-          <select id="materialSelect" required></select>
+          <select id="materialSelect" required aria-label="Selecione o tipo de material">
+            <!-- Opções serão geradas pelo JavaScript -->
+          </select>
         </label>
 
         <label class="field">
@@ -78,30 +83,31 @@
             min="0"
             placeholder="Ex.: 1,300"
             required
+            aria-describedby="peso-hint"
           />
-          <small class="hint">
+          <small id="peso-hint" class="hint">
             Use o valor da balança.<br>
             <b>1,300</b> = 1 kg e 300 g • <b>0,250</b> = 250 g
           </small>
         </label>
 
         <div class="grid-2">
-          <div class="metric">
+          <div class="metric" aria-live="polite">
             <span class="metric-label">Preço por kg</span>
             <strong id="precoKg" class="metric-value">R$ 0,00</strong>
           </div>
 
-          <div class="metric">
+          <div class="metric" aria-live="polite">
             <span class="metric-label">Total do item</span>
             <strong id="totalItem" class="metric-value">R$ 0,00</strong>
           </div>
         </div>
 
         <div class="actions">
-          <button class="btn btn-primary" type="submit">
+          <button class="btn btn-primary" type="submit" id="btnAddItem" aria-label="Adicionar item à compra">
             Adicionar item
           </button>
-          <button id="btnClearInputs" class="btn btn-secondary" type="button">
+          <button id="btnClearInputs" class="btn btn-secondary" type="button" aria-label="Limpar campos de entrada">
             Limpar
           </button>
         </div>
@@ -109,33 +115,35 @@
     </section>
 
     <!-- ITENS DA COMPRA ATIVA -->
-    <section class="card">
+    <section class="card" aria-labelledby="itens-title">
       <div class="card-title">
-        <h2>Itens da compra ativa</h2>
-        <button id="btnClearAll" class="btn btn-ghost" type="button">
+        <h2 id="itens-title">Itens da compra ativa</h2>
+        <button id="btnClearAll" class="btn btn-ghost" type="button" aria-label="Cancelar compra atual">
           Cancelar compra
         </button>
       </div>
 
-      <ul id="itensList" class="list" aria-live="polite"></ul>
+      <ul id="itensList" class="list" aria-live="polite" aria-label="Lista de itens da compra"></ul>
 
-      <div class="total-box">
+      <div class="total-box" aria-live="polite">
         <span>Total (dia + compra ativa)</span>
         <strong id="totalGeral">R$ 0,00</strong>
       </div>
     </section>
 
     <!-- FECHAMENTO DO DIA -->
-    <section class="card">
+    <section class="card" aria-labelledby="fechamento-title">
       <div class="card-title">
-        <h2>Fechamento do dia</h2>
+        <h2 id="fechamento-title">Fechamento do dia</h2>
       </div>
 
       <div class="actions">
         <button
+          id="btnFecharDia"
           class="btn btn-primary"
           style="width:100%;"
-          onclick="fecharDiaWhatsApp()"
+          type="button"
+          aria-label="Fechar dia e enviar relatório por WhatsApp"
         >
           📤 Fechar dia e enviar WhatsApp
         </button>
@@ -143,22 +151,23 @@
     </section>
 
     <!-- MODAL DE PREÇOS -->
-    <dialog id="pricesDialog" class="dialog">
+    <dialog id="pricesDialog" class="dialog" aria-labelledby="dialog-title">
       <form method="dialog" class="dialog-content">
         <div class="dialog-title">
-          <h3>Editar preços (R$/kg)</h3>
-          <button class="btn btn-ghost" value="cancel" aria-label="Fechar">
+          <h3 id="dialog-title">Editar preços (R$/kg)</h3>
+          <button class="btn btn-ghost" value="cancel" aria-label="Fechar modal de preços" autofocus>
             ✕
           </button>
         </div>
 
-        <div id="pricesForm" class="prices-form"></div>
+        <div id="pricesForm" class="prices-form" role="form" aria-label="Formulário de edição de preços"></div>
 
         <div class="dialog-actions">
           <button
             id="btnResetPrices"
             class="btn btn-secondary"
             type="button"
+            aria-label="Restaurar preços padrão"
           >
             Restaurar padrão
           </button>
@@ -166,6 +175,7 @@
             id="btnSavePrices"
             class="btn btn-primary"
             type="button"
+            aria-label="Salvar alterações nos preços"
           >
             Salvar
           </button>
@@ -177,7 +187,7 @@
 
   <!-- FOOTER -->
   <footer class="footer">
-    <small>MP Reciclagem • Uso interno</small>
+    <small>MP Reciclagem • Uso interno • ♻️</small>
   </footer>
 
   <!-- SCRIPT -->

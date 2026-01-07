@@ -61,8 +61,16 @@ function init() {
   syncPriceAndTotal();
   atualizarEstadoUI();
 
+  // Event listeners
   materialSelect.addEventListener("change", syncPriceAndTotal);
   pesoInput.addEventListener("input", syncPriceAndTotal);
+  
+  // Adiciona foco ao peso quando material é selecionado
+  materialSelect.addEventListener("change", () => {
+    if (compraAtiva) {
+      pesoInput.focus();
+    }
+  });
 
   formItem.addEventListener("submit", e => {
     e.preventDefault();
@@ -76,15 +84,18 @@ function init() {
 
   // Cancelar compra
   btnClearAll.addEventListener("click", () => {
-  if (!compraAtiva) return;
-  if (!confirm("Cancelar a compra atual?")) return;
-  compraAtiva = null;
-  saveCompraAtiva();
-  renderItens();
-  updateTotais();
-  atualizarEstadoUI();
+    if (!compraAtiva) return;
+    if (!confirm("Cancelar a compra atual?")) return;
+    compraAtiva = null;
+    saveCompraAtiva();
+    renderItens();
+    updateTotais();
+    atualizarEstadoUI();
   });
 
+  // Event listeners para botões principais
+  btnNovaCompra.addEventListener("click", novaCompra);
+  btnFinalizarCompra.addEventListener("click", finalizarCompra);
 
   // Preços
   btnOpenPrices.addEventListener("click", () => {
@@ -99,7 +110,7 @@ function init() {
     });
     prices = novos;
     savePrices();
-    renderMaterialOptions(true);
+    renderMaterialOptions();
     syncPriceAndTotal();
     pricesDialog.close();
   });
@@ -108,8 +119,51 @@ function init() {
     prices = { ...defaultPrices };
     savePrices();
     renderPricesEditor();
-    renderMaterialOptions(true);
+    renderMaterialOptions();
     syncPriceAndTotal();
+  });
+}
+
+// ---------- RENDERIZAÇÃO ----------
+function renderMaterialOptions() {
+  const current = materialSelect.value;
+  materialSelect.innerHTML = "";
+
+  Object.keys(prices).forEach(mat => {
+    const option = document.createElement("option");
+    option.value = mat;
+    option.textContent = `${mat} (${formatBRL(prices[mat])}/kg)`;
+    materialSelect.appendChild(option);
+  });
+
+  // Restaura seleção anterior se ainda existir
+  if (Object.keys(prices).includes(current)) {
+    materialSelect.value = current;
+  } else if (Object.keys(prices).length > 0) {
+    materialSelect.value = Object.keys(prices)[0];
+  }
+}
+
+function renderPricesEditor() {
+  pricesForm.innerHTML = "";
+  
+  Object.keys(prices).forEach(mat => {
+    const div = document.createElement("div");
+    div.className = "field";
+    
+    div.innerHTML = `
+      <span>${mat}</span>
+      <input 
+        type="number" 
+        step="0.01" 
+        min="0" 
+        value="${prices[mat].toFixed(2).replace('.', ',')}"
+        data-material="${mat}"
+        placeholder="R$/kg"
+      >
+    `;
+    
+    pricesForm.appendChild(div);
   });
 }
 
@@ -131,7 +185,6 @@ function atualizarEstadoUI() {
     btn.disabled = !temCompraAtiva;
   });
 }
-
 
 // ---------- COMPRA ----------
 function novaCompra() {
@@ -172,6 +225,12 @@ function addItem() {
   const precoKg = prices[material] || 0;
   const pesoKg = parseNumber(pesoInput.value);
 
+  // Validações
+  if (!material || !prices[material]) {
+    alert("Selecione um material válido.");
+    return;
+  }
+
   if (!pesoKg || pesoKg <= 0) {
     alert("Informe um peso válido. Ex.: 1,300");
     return;
@@ -191,6 +250,7 @@ function addItem() {
 
   pesoInput.value = "";
   syncPriceAndTotal();
+  pesoInput.focus(); // Foco automático para próximo item
 }
 
 function renderItens() {
@@ -318,11 +378,12 @@ function getNextSeqDia() {
   const hoje = new Date().toISOString().slice(0, 10);
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_SEQ_DIA)) || {};
 
+  // Reset se for outro dia
   if (saved.date !== hoje) {
     saved.date = hoje;
     saved.seq = 1;
   } else {
-    saved.seq++;
+    saved.seq = (saved.seq || 0) + 1;
   }
 
   localStorage.setItem(STORAGE_KEY_SEQ_DIA, JSON.stringify(saved));
@@ -357,7 +418,12 @@ function loadPrices() {
       localStorage.setItem(STORAGE_KEY_PRECOS, JSON.stringify(defaultPrices));
       return { ...defaultPrices };
     }
-    return saved;
+    
+    // Garante que todos os materiais padrão existam
+    const merged = { ...defaultPrices, ...saved };
+    localStorage.setItem(STORAGE_KEY_PRECOS, JSON.stringify(merged));
+    return merged;
+    
   } catch {
     localStorage.setItem(STORAGE_KEY_PRECOS, JSON.stringify(defaultPrices));
     return { ...defaultPrices };
