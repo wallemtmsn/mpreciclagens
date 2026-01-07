@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MP Reciclagem • Calculadora de Compra</title>
+  <title>MP Reciclagem • Compras de Materiais</title>
   <link rel="stylesheet" href="styles.css" />
 </head>
 
@@ -14,13 +14,42 @@
       <div class="logo">MP</div>
       <div class="brand-text">
         <h1>MP Reciclagem</h1>
-        <p>Compra de materiais</p>
+        <p>Controle de compras por atendimento</p>
       </div>
     </div>
   </header>
 
   <!-- CONTEÚDO -->
   <main class="container">
+
+    <!-- CONTROLE DA COMPRA -->
+    <section class="card">
+      <div class="card-title">
+        <h2>Compra / Atendimento</h2>
+      </div>
+
+      <div class="actions">
+        <button
+          class="btn btn-primary"
+          style="flex:1"
+          onclick="novaCompra()"
+        >
+          ➕ Nova Compra
+        </button>
+
+        <button
+          class="btn btn-secondary"
+          style="flex:1"
+          onclick="finalizarCompra()"
+        >
+          ✔ Finalizar Compra
+        </button>
+      </div>
+
+      <small class="hint" style="margin-top:8px; display:block;">
+        Cada pessoa que vende material deve ter uma nova compra.
+      </small>
+    </section>
 
     <!-- NOVO ITEM -->
     <section class="card">
@@ -68,7 +97,7 @@
 
         <div class="actions">
           <button class="btn btn-primary" type="submit">
-            Adicionar
+            Adicionar item
           </button>
           <button id="btnClearInputs" class="btn btn-secondary" type="button">
             Limpar
@@ -77,28 +106,34 @@
       </form>
     </section>
 
-    <!-- ITENS DO DIA -->
+    <!-- ITENS DA COMPRA ATIVA -->
     <section class="card">
       <div class="card-title">
-        <h2>Itens do atendimento</h2>
+        <h2>Itens da compra ativa</h2>
         <button id="btnClearAll" class="btn btn-ghost" type="button">
-          Zerar lista
+          Cancelar compra
         </button>
       </div>
 
       <ul id="itensList" class="list" aria-live="polite"></ul>
 
       <div class="total-box">
-        <span>Total geral</span>
+        <span>Total (dia + compra ativa)</span>
         <strong id="totalGeral">R$ 0,00</strong>
       </div>
+    </section>
 
-      <!-- FECHAMENTO -->
-      <div class="actions" style="margin-top:16px;">
+    <!-- FECHAMENTO DO DIA -->
+    <section class="card">
+      <div class="card-title">
+        <h2>Fechamento do dia</h2>
+      </div>
+
+      <div class="actions">
         <button
           class="btn btn-primary"
           style="width:100%;"
-          onclick="abrirConfirmacaoFechamento()"
+          onclick="fecharDiaWhatsApp()"
         >
           📤 Fechar dia e enviar WhatsApp
         </button>

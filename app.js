@@ -1,14 +1,17 @@
 /* =====================================================
    MP RECICLAGEM - CALCULADORA DE COMPRA
+   - Compras separadas por atendimento
    - Peso digitado como na balança (1,300 = 1kg 300g)
    - Persistência em localStorage
-   - Confirmação de fechamento
    - Envio automático para WhatsApp fixo
 ===================================================== */
 
 const WHATSAPP_NUMBER = "5522998303157";
-const STORAGE_KEY_ITENS = "mp_itens_dia";
+
 const STORAGE_KEY_PRECOS = "mp_precos";
+const STORAGE_KEY_COMPRAS_DIA = "mp_compras_dia";
+const STORAGE_KEY_COMPRA_ATIVA = "mp_compra_ativa";
+const STORAGE_KEY_SEQ_DIA = "mp_seq_dia";
 
 // Preços padrão (R$/kg)
 const defaultPrices = {
@@ -24,7 +27,8 @@ const defaultPrices = {
 
 // ---------- Estado ----------
 let prices = loadPrices();
-let itens = loadItens();
+let compraAtiva = loadCompraAtiva();
+let comprasDia = loadComprasDia();
 
 // ---------- Elementos ----------
 const materialSelect = document.getElementById("materialSelect");
@@ -50,7 +54,7 @@ init();
 function init() {
   renderMaterialOptions();
   renderItens();
-  updateTotalGeral();
+  updateTotais();
   syncPriceAndTotal();
 
   materialSelect.addEventListener("change", syncPriceAndTotal);
@@ -64,15 +68,14 @@ function init() {
   btnClearInputs.addEventListener("click", () => {
     pesoInput.value = "";
     syncPriceAndTotal();
-    pesoInput.focus();
   });
 
   btnClearAll.addEventListener("click", () => {
-    if (!confirm("Deseja zerar todos os itens do dia?")) return;
-    itens = [];
-    saveItens();
+    if (!confirm("Cancelar a compra atual?")) return;
+    compraAtiva = null;
+    saveCompraAtiva();
     renderItens();
-    updateTotalGeral();
+    updateTotais();
   });
 
   // Preços
@@ -86,7 +89,6 @@ function init() {
     pricesForm.querySelectorAll("input").forEach(inp => {
       novos[inp.dataset.material] = parseNumber(inp.value) || 0;
     });
-
     prices = novos;
     savePrices();
     renderMaterialOptions(true);
@@ -103,8 +105,43 @@ function init() {
   });
 }
 
-// ---------- Funções principais ----------
+// ---------- COMPRA ----------
+function novaCompra() {
+  const seq = getNextSeqDia();
+  compraAtiva = {
+    idCompra: seq,
+    nomeVendedor: "",
+    itens: []
+  };
+  saveCompraAtiva();
+  renderItens();
+  updateTotais();
+}
+
+function finalizarCompra() {
+  if (!compraAtiva || compraAtiva.itens.length === 0) {
+    alert("Não há itens nesta compra.");
+    return;
+  }
+
+  compraAtiva.totalCompra = compraAtiva.itens.reduce((s, i) => s + i.total, 0);
+  comprasDia.push(compraAtiva);
+
+  saveComprasDia();
+  compraAtiva = null;
+  saveCompraAtiva();
+
+  renderItens();
+  updateTotais();
+}
+
+// ---------- Itens ----------
 function addItem() {
+  if (!compraAtiva) {
+    alert("Inicie uma nova compra.");
+    return;
+  }
+
   const material = materialSelect.value;
   const precoKg = prices[material] || 0;
   const pesoKg = parseNumber(pesoInput.value);
@@ -116,69 +153,83 @@ function addItem() {
 
   const total = pesoKg * precoKg;
 
-  itens.push({
-    id: crypto.randomUUID(),
+  compraAtiva.itens.push({
     material,
     pesoKg,
     precoKg,
     total
   });
 
-  saveItens();
+  saveCompraAtiva();
   renderItens();
-  updateTotalGeral();
+  updateTotais();
 
   pesoInput.value = "";
   syncPriceAndTotal();
-  pesoInput.focus();
 }
 
 function renderItens() {
   itensList.innerHTML = "";
 
-  if (itens.length === 0) {
+  if (!compraAtiva) {
     itensList.innerHTML = `
       <li class="item">
         <div class="meta">
-          <div class="title">Nenhum item lançado</div>
+          <div class="title">Nenhuma compra ativa</div>
         </div>
       </li>
     `;
     return;
   }
 
-  itens.forEach(item => {
+  if (compraAtiva.itens.length === 0) {
+    itensList.innerHTML = `
+      <li class="item">
+        <div class="meta">
+          <div class="title">Compra #${compraAtiva.idCompra}</div>
+          <div class="item-info">Nenhum item lançado</div>
+        </div>
+      </li>
+    `;
+    return;
+  }
+
+  compraAtiva.itens.forEach((item, idx) => {
     const li = document.createElement("li");
     li.className = "item";
 
     li.innerHTML = `
       <div class="meta">
         <div class="title">${item.material}</div>
-
         <div class="item-info">
           <div><b>Peso:</b> ${formatKg(item.pesoKg)}</div>
           <div><b>Valor/kg:</b> ${formatBRL(item.precoKg)}</div>
           <div><b>Total:</b> ${formatBRL(item.total)}</div>
         </div>
       </div>
-
-      <button class="icon-btn" title="Remover item">🗑</button>
+      <button class="icon-btn">🗑</button>
     `;
 
     li.querySelector("button").onclick = () => {
-      itens = itens.filter(i => i.id !== item.id);
-      saveItens();
+      compraAtiva.itens.splice(idx, 1);
+      saveCompraAtiva();
       renderItens();
-      updateTotalGeral();
+      updateTotais();
     };
 
     itensList.appendChild(li);
   });
 }
 
-function updateTotalGeral() {
-  const total = itens.reduce((s, i) => s + i.total, 0);
-  totalGeralEl.textContent = formatBRL(total);
+// ---------- Totais ----------
+function updateTotais() {
+  const totalCompra = compraAtiva
+    ? compraAtiva.itens.reduce((s, i) => s + i.total, 0)
+    : 0;
+
+  const totalDia = comprasDia.reduce((s, c) => s + c.totalCompra, 0);
+
+  totalGeralEl.textContent = formatBRL(totalDia + totalCompra);
 }
 
 function syncPriceAndTotal() {
@@ -191,61 +242,38 @@ function syncPriceAndTotal() {
 }
 
 // ---------- WhatsApp ----------
-function abrirConfirmacaoFechamento() {
-  if (itens.length === 0) {
-    alert("Não há itens para fechar o dia.");
+function fecharDiaWhatsApp() {
+  if (comprasDia.length === 0) {
+    alert("Nenhuma compra finalizada no dia.");
     return;
   }
 
-  const total = itens.reduce((s, i) => s + i.total, 0);
-
-  if (!confirm(`Fechar o dia?\n\nItens: ${itens.length}\nTotal: ${formatBRL(total)}`)) {
-    return;
-  }
-
-  enviarResumoWhatsApp();
-}
-
-function enviarResumoWhatsApp() {
   const data = new Date().toLocaleDateString("pt-BR");
-  const hora = new Date().toLocaleTimeString("pt-BR", {
-    hour: "2-digit",
-    minute: "2-digit"
+  let msg = `♻️ *MP RECICLAGEM*\n📅 *Fechamento do dia:* ${data}\n\n`;
+  msg += `────────────────\n🧾 *COMPRAS DO DIA*\n\n`;
+
+  comprasDia.forEach(c => {
+    msg += `Compra #${c.idCompra}\n`;
+    msg += `Total: ${formatBRL(c.totalCompra)}\n\n`;
   });
 
-  let msg = `♻️ *MP RECICLAGEM*\n`;
-  msg += `📅 *Resumo do dia:* ${data}\n\n`;
-  msg += `────────────────\n📦 *ITENS COMPRADOS*\n\n`;
+  const totalDia = comprasDia.reduce((s, c) => s + c.totalCompra, 0);
 
-  itens.forEach(i => {
-    msg += `• *${i.material}*\n`;
-    msg += `  Peso: ${formatKg(i.pesoKg)}\n`;
-    msg += `  Valor/kg: ${formatBRL(i.precoKg)}\n`;
-    msg += `  Total: ${formatBRL(i.total)}\n\n`;
-  });
-
-  const totalGeral = itens.reduce((s, i) => s + i.total, 0);
-
-  msg += `────────────────\n💰 *TOTAL DO DIA:* ${formatBRL(totalGeral)}\n`;
-  msg += `🕒 Fechamento: ${hora}`;
+  msg += `────────────────\n💰 *TOTAL DO DIA:* ${formatBRL(totalDia)}`;
 
   window.open(
     `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`,
     "_blank"
   );
 
-  itens = [];
-  saveItens();
-  renderItens();
-  updateTotalGeral();
+  comprasDia = [];
+  localStorage.removeItem(STORAGE_KEY_COMPRAS_DIA);
+  localStorage.removeItem(STORAGE_KEY_SEQ_DIA);
 }
 
 // ---------- Utilidades ----------
 function formatBRL(v) {
-  return v.toLocaleString("pt-BR", {
-    style: "currency",
-    currency: "BRL"
-  });
+  return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
 function formatKg(v) {
@@ -260,42 +288,37 @@ function parseNumber(v) {
   return Number(String(v).replace(",", "."));
 }
 
-// ---------- Materiais ----------
-function renderMaterialOptions(keep) {
-  const atual = keep ? materialSelect.value : null;
-  materialSelect.innerHTML = "";
+// ---------- Sequência diária ----------
+function getNextSeqDia() {
+  const hoje = new Date().toISOString().slice(0, 10);
+  const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_SEQ_DIA)) || {};
 
-  Object.keys(prices).forEach(m => {
-    const opt = document.createElement("option");
-    opt.value = m;
-    opt.textContent = m;
-    materialSelect.appendChild(opt);
-  });
-
-  if (atual && prices[atual] !== undefined) {
-    materialSelect.value = atual;
+  if (saved.date !== hoje) {
+    saved.date = hoje;
+    saved.seq = 1;
+  } else {
+    saved.seq++;
   }
+
+  localStorage.setItem(STORAGE_KEY_SEQ_DIA, JSON.stringify(saved));
+  return String(saved.seq).padStart(3, "0");
 }
 
-function renderPricesEditor() {
-  pricesForm.innerHTML = "";
-  Object.entries(prices).forEach(([m, v]) => {
-    pricesForm.innerHTML += `
-      <label class="field">
-        <span>${m}</span>
-        <input type="number" step="0.01" value="${v}" data-material="${m}">
-      </label>
-    `;
-  });
+// ---------- Storage ----------
+function saveCompraAtiva() {
+  localStorage.setItem(STORAGE_KEY_COMPRA_ATIVA, JSON.stringify(compraAtiva));
 }
 
-// ---------- Storage (à prova de erro) ----------
-function saveItens() {
-  localStorage.setItem(STORAGE_KEY_ITENS, JSON.stringify(itens));
+function loadCompraAtiva() {
+  return JSON.parse(localStorage.getItem(STORAGE_KEY_COMPRA_ATIVA));
 }
 
-function loadItens() {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY_ITENS)) || [];
+function saveComprasDia() {
+  localStorage.setItem(STORAGE_KEY_COMPRAS_DIA, JSON.stringify(comprasDia));
+}
+
+function loadComprasDia() {
+  return JSON.parse(localStorage.getItem(STORAGE_KEY_COMPRAS_DIA)) || [];
 }
 
 function savePrices() {
@@ -305,21 +328,13 @@ function savePrices() {
 function loadPrices() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_PRECOS));
-
     if (!saved || Object.keys(saved).length === 0) {
-      localStorage.setItem(
-        STORAGE_KEY_PRECOS,
-        JSON.stringify(defaultPrices)
-      );
+      localStorage.setItem(STORAGE_KEY_PRECOS, JSON.stringify(defaultPrices));
       return { ...defaultPrices };
     }
-
     return saved;
   } catch {
-    localStorage.setItem(
-      STORAGE_KEY_PRECOS,
-      JSON.stringify(defaultPrices)
-    );
+    localStorage.setItem(STORAGE_KEY_PRECOS, JSON.stringify(defaultPrices));
     return { ...defaultPrices };
   }
 }
