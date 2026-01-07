@@ -17,20 +17,19 @@
         <p>Controle de compras por atendimento</p>
       </div>
     </div>
-        
   </header>
 
   <!-- BOTÃO DE SUPORTE -->
-    <button id="btnSuporte" class="btn-suporte" aria-label="Falar com suporte no WhatsApp">
-      <span>Suporte</span>
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2C6.477 2 2 6.477 2 12C2 13.396 2.334 14.715 2.934 15.882L2.023 21.977L8.118 21.066C9.285 21.666 10.604 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2Z" 
-              fill="currentColor"/>
-        <path d="M17.065 14.425C16.826 14.186 16.427 14.066 16.108 14.186C15.789 14.306 14.872 14.786 14.673 14.905C14.474 15.024 14.315 15.004 14.155 14.785C13.996 14.566 13.477 13.687 13.317 13.408C13.158 13.129 13.198 12.97 13.278 12.851C13.437 12.612 13.597 12.293 13.677 12.054C13.757 11.815 13.677 11.616 13.597 11.457C13.517 11.298 12.999 9.959 12.759 9.401C12.52 8.843 12.281 8.923 12.082 8.923C11.883 8.923 11.644 8.883 11.445 8.883C11.246 8.883 10.967 8.963 10.728 9.242C10.489 9.521 9.691 10.32 9.691 11.776C9.691 13.232 10.569 14.665 10.728 14.905C10.888 15.144 12.162 17.145 14.394 18.082C15.071 18.362 15.63 18.521 16.108 18.641C16.746 18.801 17.345 18.761 17.824 18.641C18.303 18.521 19.58 17.904 19.899 17.225C20.218 16.546 20.218 15.944 20.138 15.824C20.058 15.704 19.819 15.625 19.58 15.465C19.341 15.305 18.023 14.545 17.824 14.426C17.625 14.307 17.305 14.664 17.065 14.425Z" 
-              fill="white"/>
-      </svg>
-    </button>
-    
+  <button id="btnSuporte" class="btn-suporte" aria-label="Falar com suporte no WhatsApp">
+    <span>Suporte</span>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2C6.477 2 2 6.477 2 12C2 13.396 2.334 14.715 2.934 15.882L2.023 21.977L8.118 21.066C9.285 21.666 10.604 22 12 22C17.523 22 22 17.523 22 12C22 6.477 17.523 2 12 2Z" 
+            fill="currentColor"/>
+      <path d="M17.065 14.425C16.826 14.186 16.427 14.066 16.108 14.186C15.789 14.306 14.872 14.786 14.673 14.905C14.474 15.024 14.315 15.004 14.155 14.785C13.996 14.566 13.477 13.687 13.317 13.408C13.158 13.129 13.198 12.97 13.278 12.851C13.437 12.612 13.597 12.293 13.677 12.054C13.757 11.815 13.677 11.616 13.597 11.457C13.517 11.298 12.999 9.959 12.759 9.401C12.52 8.843 12.281 8.923 12.082 8.923C11.883 8.923 11.644 8.883 11.445 8.883C11.246 8.883 10.967 8.963 10.728 9.242C10.489 9.521 9.691 10.32 9.691 11.776C9.691 13.232 10.569 14.665 10.728 14.905C10.888 15.144 12.162 17.145 14.394 18.082C15.071 18.362 15.63 18.521 16.108 18.641C16.746 18.801 17.345 18.761 17.824 18.641C18.303 18.521 19.58 17.904 19.899 17.225C20.218 16.546 20.218 15.944 20.138 15.824C20.058 15.704 19.819 15.625 19.58 15.465C19.341 15.305 18.023 14.545 17.824 14.426C17.625 14.307 17.305 14.664 17.065 14.425Z" 
+            fill="white"/>
+    </svg>
+  </button>
+  
   <!-- CONTEÚDO -->
   <main class="container">
 
@@ -41,19 +40,10 @@
       </div>
 
       <div class="actions">
-        <button
-          id="btnNovaCompra"
-          class="btn btn-primary"
-          style="flex:1"
-        >
+        <button id="btnNovaCompra" class="btn btn-primary" style="flex:1">
           ➕ Nova Compra
         </button>
-
-        <button
-          id="btnFinalizarCompra"
-          class="btn btn-secondary"
-          style="flex:1"
-        >
+        <button id="btnFinalizarCompra" class="btn btn-secondary" style="flex:1">
           ✔ Finalizar Compra
         </button>
       </div>
@@ -67,14 +57,9 @@
     <section class="card">
       <div class="card-title">
         <h2>Novo item</h2>
-        <div>
-          <button id="btnGerenciarMateriais" class="btn btn-ghost" type="button">
-            📋 Gerenciar materiais
-          </button>
-          <button id="btnOpenPrices" class="btn btn-ghost" type="button">
-            💰 Editar preços
-          </button>
-        </div>
+        <button id="btnGerenciarMateriais" class="btn btn-ghost" type="button">
+          📋 Gerenciar materiais e preços
+        </button>
       </div>
 
       <form id="formItem" class="form">
@@ -105,7 +90,6 @@
             <span class="metric-label">Preço por kg</span>
             <strong id="precoKg" class="metric-value">R$ 0,00</strong>
           </div>
-
           <div class="metric">
             <span class="metric-label">Total do item</span>
             <strong id="totalItem" class="metric-value">R$ 0,00</strong>
@@ -162,11 +146,7 @@
       </div>
 
       <div class="actions">
-        <button
-          id="btnFecharDia"
-          class="btn btn-primary"
-          style="width:100%;"
-        >
+        <button id="btnFecharDia" class="btn btn-primary" style="width:100%;">
           📤 Fechar dia e enviar WhatsApp
         </button>
       </div>
@@ -181,9 +161,7 @@
             ✕
           </button>
         </div>
-
         <div id="detalhesConteudo" class="detalhes-content"></div>
-
         <div class="dialog-actions">
           <button class="btn btn-primary" type="submit">
             Fechar
@@ -192,49 +170,18 @@
       </form>
     </dialog>
 
-    <!-- MODAL DE PREÇOS -->
-    <dialog id="pricesDialog" class="dialog">
-      <form method="dialog" class="dialog-content">
-        <div class="dialog-title">
-          <h3>Editar preços (R$/kg)</h3>
-          <button class="btn btn-ghost" value="cancel" aria-label="Fechar">
-            ✕
-          </button>
-        </div>
-
-        <div id="pricesForm" class="prices-form"></div>
-
-        <div class="dialog-actions">
-          <button
-            id="btnResetPrices"
-            class="btn btn-secondary"
-            type="button"
-          >
-            Restaurar padrão
-          </button>
-          <button
-            id="btnSavePrices"
-            class="btn btn-primary"
-            type="button"
-          >
-            Salvar
-          </button>
-        </div>
-      </form>
-    </dialog>
-
-    <!-- MODAL GERENCIAR MATERIAIS -->
+    <!-- MODAL GERENCIAR MATERIAIS E PREÇOS -->
     <dialog id="materiaisDialog" class="dialog">
       <form method="dialog" class="dialog-content">
         <div class="dialog-title">
-          <h3>📋 Gerenciar materiais</h3>
+          <h3>📋 Gerenciar materiais e preços</h3>
           <button class="btn btn-ghost" value="cancel" aria-label="Fechar">
             ✕
           </button>
         </div>
 
         <div class="materiais-container">
-          <!-- Lista de materiais existentes -->
+          <!-- Lista de materiais existentes com edição de preços -->
           <div id="materiaisList" class="materiais-list"></div>
           
           <!-- Formulário para adicionar novo material -->
@@ -265,8 +212,8 @@
         </div>
 
         <div class="dialog-actions">
-          <button class="btn btn-secondary" type="button" id="btnFecharMateriais">
-            Fechar
+          <button class="btn btn-primary" type="button" id="btnFecharMateriais">
+            Fechar e atualizar
           </button>
         </div>
       </form>
@@ -278,25 +225,6 @@
   <footer class="footer">
     <small>♻️ MP Reciclagem • 2026 ♻️</small>
   </footer>
-
-  <!-- BOTÃO DE EMERGÊNCIA PARA MOBILE -->
-  <div id="mobileFix" style="display: none;">
-    <button onclick="forceReloadData()" style="
-      position: fixed;
-      bottom: 100px;
-      right: 20px;
-      background: #ff6b6b;
-      color: white;
-      border: none;
-      padding: 10px 15px;
-      border-radius: 10px;
-      font-size: 12px;
-      z-index: 999;
-      box-shadow: 0 4px 12px rgba(255,107,107,0.3);
-    ">
-      🔄 Recarregar Preços
-    </button>
-  </div>
 
   <!-- SCRIPT -->
   <script src="app.js"></script>

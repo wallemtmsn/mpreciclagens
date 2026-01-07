@@ -52,11 +52,6 @@ const btnClearAll = document.getElementById("btnClearAll");
 const btnNovaCompra = document.getElementById("btnNovaCompra");
 const btnFinalizarCompra = document.getElementById("btnFinalizarCompra");
 const btnFecharDia = document.getElementById("btnFecharDia");
-const pricesDialog = document.getElementById("pricesDialog");
-const btnOpenPrices = document.getElementById("btnOpenPrices");
-const pricesForm = document.getElementById("pricesForm");
-const btnSavePrices = document.getElementById("btnSavePrices");
-const btnResetPrices = document.getElementById("btnResetPrices");
 const detalhesDialog = document.getElementById("detalhesDialog");
 const detalhesTitulo = document.getElementById("detalhesTitulo");
 const detalhesConteudo = document.getElementById("detalhesConteudo");
@@ -68,79 +63,19 @@ const novoMaterialPreco = document.getElementById("novoMaterialPreco");
 const btnAddMaterial = document.getElementById("btnAddMaterial");
 const btnFecharMateriais = document.getElementById("btnFecharMateriais");
 
-// ---------- Funções de debug para mobile ----------
-function debugMobile() {
-  console.log("=== DEBUG MOBILE ===");
-  console.log("localStorage disponível:", typeof localStorage !== 'undefined');
-  console.log("Preços no localStorage:", localStorage.getItem(STORAGE_KEY_PRECOS));
-  console.log("Screen width:", window.innerWidth);
-  console.log("User agent:", navigator.userAgent);
-  console.log("Elementos críticos:");
-  console.log("- materialSelect:", !!materialSelect);
-  console.log("- pesoInput:", !!pesoInput);
-  console.log("- precoKgEl:", !!precoKgEl);
-  console.log("=== FIM DEBUG ===");
-}
-
-// ---------- CORREÇÃO PARA MOBILE ----------
-function fixMobilePrices() {
-  console.log("=== VERIFICANDO PREÇOS NO MOBILE ===");
-  
-  // Verifica se os preços foram carregados
-  if (!prices || Object.keys(prices).length === 0) {
-    console.log("Preços vazios, forçando recarga...");
-    
-    // Carrega preços do localStorage manualmente
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY_PRECOS);
-      console.log("Dados no localStorage:", saved);
-      
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        console.log("Dados parseados:", parsed);
-        prices = parsed;
-      } else {
-        console.log("Usando preços padrão...");
-        prices = { ...defaultPrices };
-        savePrices(); // Salva no localStorage
-      }
-    } catch (error) {
-      console.error("Erro ao carregar preços:", error);
-      prices = { ...defaultPrices };
-      savePrices();
-    }
-  }
-  
-  console.log("Preços após correção:", prices);
-  console.log("Materiais disponíveis:", Object.keys(prices));
-}
-
 // ---------- Inicialização ----------
 document.addEventListener('DOMContentLoaded', init);
 
 function init() {
   console.log("Inicializando MP Reciclagem...");
   
-  debugMobile();
+  // Carrega dados
+  loadAllData();
   
-  // Correção para mobile
-  if (window.innerWidth <= 768) {
-    console.log("Modo mobile detectado - aplicando correções...");
-    fixMobilePrices();
-  } else {
-    // Carrega normalmente
-    loadAllData();
-  }
-  
-  // Verifica se todos os elementos DOM existem
+  // Verifica elementos DOM
   if (!materialSelect || !pesoInput || !precoKgEl) {
     console.error("Elementos DOM críticos não encontrados!");
-    
-    // Tenta novamente após um delay (para mobile/loading lento)
-    setTimeout(() => {
-      console.log("Tentando novamente carregar elementos...");
-      init();
-    }, 500);
+    setTimeout(init, 500);
     return;
   }
   
@@ -157,24 +92,6 @@ function init() {
   
   console.log("Sistema inicializado com sucesso!");
   console.log("Materiais carregados:", Object.keys(prices).length);
-  console.log("Lista de materiais:", Object.keys(prices));
-  
-  // Mostra botão de emergência para mobile
-  if (window.innerWidth <= 768) {
-    document.getElementById('mobileFix').style.display = 'block';
-  }
-  
-  // Verificação final
-  setTimeout(() => {
-    console.log("=== VERIFICAÇÃO FINAL ===");
-    console.log("materialSelect.options:", materialSelect ? materialSelect.options.length : "N/A");
-    console.log("prices keys:", Object.keys(prices));
-    
-    if (materialSelect && materialSelect.options.length === 0) {
-      console.log("Select vazio - forçando recarga...");
-      renderMaterialOptions();
-    }
-  }, 1000);
 }
 
 function loadAllData() {
@@ -187,41 +104,32 @@ function loadAllData() {
     const compraAtivaData = localStorage.getItem(STORAGE_KEY_COMPRA_ATIVA);
     if (compraAtivaData) {
       compraAtiva = JSON.parse(compraAtivaData);
-      console.log("Compra ativa carregada:", compraAtiva);
     }
     
     // Carrega compras do dia
     const comprasDiaData = localStorage.getItem(STORAGE_KEY_COMPRAS_DIA);
     if (comprasDiaData) {
       comprasDia = JSON.parse(comprasDiaData) || [];
-      console.log("Compras do dia carregadas:", comprasDia.length);
     }
   } catch (error) {
     console.error("Erro ao carregar dados:", error);
     prices = { ...defaultPrices };
     compraAtiva = null;
     comprasDia = [];
-    savePrices(); // Salva os preços padrão
+    savePrices();
   }
 }
 
 function setupEventListeners() {
-  // LOG para debug - mostra quais elementos estão disponíveis
-  console.log("Configurando eventos...");
-  console.log("materialSelect:", !!materialSelect);
-  console.log("pesoInput:", !!pesoInput);
-  console.log("btnGerenciarMateriais:", !!btnGerenciarMateriais);
-  
   // Event listeners básicos
   if (materialSelect) materialSelect.addEventListener("change", syncPriceAndTotal);
   if (pesoInput) {
     pesoInput.addEventListener("input", syncPriceAndTotal);
-    // Adiciona touch event para mobile
     pesoInput.addEventListener("touchstart", syncPriceAndTotal);
   }
+  
   if (btnSuporte) {
     btnSuporte.addEventListener("click", abrirSuporteWhatsApp);
-    // Touch para mobile
     btnSuporte.addEventListener("touchstart", (e) => {
       e.preventDefault();
       abrirSuporteWhatsApp();
@@ -231,10 +139,8 @@ function setupEventListeners() {
   // Foco no peso quando material é selecionado
   if (materialSelect) {
     materialSelect.addEventListener("change", () => {
-      if (compraAtiva) {
-        setTimeout(() => {
-          if (pesoInput) pesoInput.focus();
-        }, 100);
+      if (compraAtiva && pesoInput) {
+        setTimeout(() => pesoInput.focus(), 100);
       }
     });
   }
@@ -253,7 +159,6 @@ function setupEventListeners() {
       if (pesoInput) pesoInput.value = "";
       syncPriceAndTotal();
     });
-    // Touch para mobile
     btnClearInputs.addEventListener("touchstart", (e) => {
       e.preventDefault();
       if (pesoInput) pesoInput.value = "";
@@ -295,77 +200,22 @@ function setupEventListeners() {
     });
   }
 
-  // Preços - modal
-  if (btnOpenPrices) {
-    btnOpenPrices.addEventListener("click", () => {
-      renderPricesEditor();
-      if (pricesDialog && typeof pricesDialog.showModal === 'function') {
-        pricesDialog.showModal();
-      }
-    });
-    btnOpenPrices.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      renderPricesEditor();
-      if (pricesDialog && typeof pricesDialog.showModal === 'function') {
-        pricesDialog.showModal();
-      }
-    });
-  }
-
-  if (btnSavePrices) {
-    btnSavePrices.addEventListener("click", salvarPrecos);
-    btnSavePrices.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      salvarPrecos();
-    });
-  }
-
-  if (btnResetPrices) {
-    btnResetPrices.addEventListener("click", resetarPrecos);
-    btnResetPrices.addEventListener("touchstart", (e) => {
-      e.preventDefault();
-      resetarPrecos();
-    });
-  }
-
   // Gerenciamento de materiais
   if (btnGerenciarMateriais) {
-    console.log("Configurando evento para btnGerenciarMateriais");
     btnGerenciarMateriais.addEventListener("click", () => {
-      console.log("Abrindo modal de materiais...");
       renderMateriaisList();
       if (materiaisDialog && typeof materiaisDialog.showModal === 'function') {
         materiaisDialog.showModal();
-      } else {
-        console.error("Modal de materiais não disponível");
-        // Fallback para mobile
-        const container = document.getElementById('materiaisContainer');
-        if (container) {
-          container.style.display = 'block';
-          container.style.position = 'fixed';
-          container.style.top = '0';
-          container.style.left = '0';
-          container.style.width = '100%';
-          container.style.height = '100%';
-          container.style.zIndex = '1000';
-          container.style.background = 'white';
-          container.style.padding = '20px';
-          container.style.overflow = 'auto';
-        }
       }
     });
     
-    // Touch event para mobile
     btnGerenciarMateriais.addEventListener("touchstart", (e) => {
       e.preventDefault();
-      console.log("Abrindo modal de materiais (touch)...");
       renderMateriaisList();
       if (materiaisDialog && typeof materiaisDialog.showModal === 'function') {
         materiaisDialog.showModal();
       }
     });
-  } else {
-    console.warn("btnGerenciarMateriais não encontrado - pode ser mobile");
   }
   
   if (btnAddMaterial) {
@@ -379,10 +229,14 @@ function setupEventListeners() {
   if (btnFecharMateriais) {
     btnFecharMateriais.addEventListener("click", () => {
       if (materiaisDialog) materiaisDialog.close();
+      // ATUALIZAÇÃO IMEDIATA: Atualiza a lista principal após fechar
+      atualizarInterfaceAposEdicao();
     });
     btnFecharMateriais.addEventListener("touchstart", (e) => {
       e.preventDefault();
       if (materiaisDialog) materiaisDialog.close();
+      // ATUALIZAÇÃO IMEDIATA: Atualiza a lista principal após fechar
+      atualizarInterfaceAposEdicao();
     });
   }
   
@@ -415,10 +269,7 @@ function abrirSuporteWhatsApp() {
 
 // ---------- RENDERIZAÇÃO ----------
 function renderMaterialOptions() {
-  if (!materialSelect) {
-    console.error("materialSelect não encontrado em renderMaterialOptions");
-    return;
-  }
+  if (!materialSelect) return;
   
   console.log("Renderizando materiais. Preços disponíveis:", Object.keys(prices));
   
@@ -438,7 +289,6 @@ function renderMaterialOptions() {
   );
 
   if (materiaisOrdenados.length === 0) {
-    console.warn("Nenhum material disponível para renderizar");
     const option = document.createElement("option");
     option.value = "";
     option.textContent = "Nenhum material cadastrado";
@@ -464,37 +314,9 @@ function renderMaterialOptions() {
   console.log(`Materiais renderizados: ${materialSelect.options.length} opções`);
 }
 
-function renderPricesEditor() {
-  if (!pricesForm) return;
-  
-  pricesForm.innerHTML = "";
-  
-  Object.keys(prices).forEach(mat => {
-    const div = document.createElement("div");
-    div.className = "field";
-    
-    div.innerHTML = `
-      <span>${mat}</span>
-      <input 
-        type="number" 
-        step="0.01" 
-        min="0" 
-        value="${prices[mat].toFixed(2).replace('.', ',')}"
-        data-material="${mat}"
-        placeholder="R$/kg"
-      >
-    `;
-    
-    pricesForm.appendChild(div);
-  });
-}
-
 // ---------- GERENCIAMENTO DE MATERIAIS ----------
 function renderMateriaisList() {
-  if (!materiaisList) {
-    console.error("materiaisList não encontrado");
-    return;
-  }
+  if (!materiaisList) return;
   
   materiaisList.innerHTML = "";
   
@@ -521,6 +343,7 @@ function renderMateriaisList() {
   
   materiaisOrdenados.forEach(material => {
     const isPadrao = MATERIAIS_PADRAO.includes(material);
+    const precoAtual = prices[material] || 0;
     
     const item = document.createElement("div");
     item.className = "material-item";
@@ -529,9 +352,22 @@ function renderMateriaisList() {
       <div class="material-info">
         <div>
           <span class="material-name">${material}</span>
+          ${isPadrao ? '<span class="material-default">Padrão</span>' : ''}
         </div>
-        <div class="material-price">
-          Preço: ${formatBRL(prices[material])}/kg
+        <div class="material-price-edit">
+          <span>Preço/kg:</span>
+          <input 
+            type="number" 
+            step="0.01" 
+            min="0" 
+            value="${precoAtual.toFixed(2).replace('.', ',')}"
+            data-material="${material}"
+            placeholder="R$/kg"
+            class="price-input"
+          />
+          <button class="btn-save-price" data-material="${material}">
+            Salvar
+          </button>
         </div>
       </div>
       <div class="material-actions">
@@ -544,6 +380,47 @@ function renderMateriaisList() {
         </button>
       </div>
     `;
+    
+    // Event listener para salvar preço
+    const btnSalvar = item.querySelector(".btn-save-price");
+    const inputPreco = item.querySelector(".price-input");
+    
+    if (btnSalvar && inputPreco) {
+      btnSalvar.addEventListener("click", () => {
+        const novoPreco = parseNumber(inputPreco.value);
+        if (novoPreco > 0) {
+          // Atualiza o preço no objeto global
+          prices[material] = novoPreco;
+          savePrices();
+          
+          // Atualiza visualmente no modal
+          inputPreco.value = novoPreco.toFixed(2).replace('.', ',');
+          btnSalvar.textContent = "✓ Salvo";
+          btnSalvar.style.background = "rgba(34,197,94,0.2)";
+          
+          // ATUALIZAÇÃO IMEDIATA: Atualiza a interface principal
+          atualizarInterfaceAposEdicao();
+          
+          setTimeout(() => {
+            btnSalvar.textContent = "Salvar";
+            btnSalvar.style.background = "";
+          }, 1500);
+          
+          showToast(`✅ Preço de "${material}" atualizado: ${formatBRL(novoPreco)}/kg`, "sucesso");
+        } else {
+          showToast("⚠️ Informe um preço válido", "erro");
+          inputPreco.focus();
+        }
+      });
+      
+      // Salvar com Enter
+      inputPreco.addEventListener("keypress", (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          btnSalvar.click();
+        }
+      });
+    }
     
     // Event listener para remover material
     const btnRemover = item.querySelector(".btn-remove-material");
@@ -559,6 +436,58 @@ function renderMateriaisList() {
     
     materiaisList.appendChild(item);
   });
+}
+
+// NOVA FUNÇÃO: Atualiza a interface principal após edição
+function atualizarInterfaceAposEdicao() {
+  console.log("Atualizando interface após edição...");
+  
+  // 1. Atualiza a lista de materiais no select principal
+  renderMaterialOptions();
+  
+  // 2. Atualiza o preço exibido se o material selecionado foi editado
+  syncPriceAndTotal();
+  
+  // 3. Atualiza todos os itens na compra ativa (se houver)
+  if (compraAtiva && compraAtiva.itens.length > 0) {
+    compraAtiva.itens.forEach(item => {
+      // Atualiza o preço/kg dos itens existentes
+      if (prices[item.material]) {
+        item.precoKg = prices[item.material];
+        item.total = item.pesoKg * item.precoKg;
+      }
+    });
+    
+    // Recalcula o total da compra
+    compraAtiva.totalCompra = compraAtiva.itens.reduce((s, i) => s + i.total, 0);
+    saveCompraAtiva();
+    
+    // Re-renderiza os itens
+    renderItens();
+    updateTotais();
+  }
+  
+  // 4. Atualiza as compras do dia (histórico)
+  if (comprasDia.length > 0) {
+    comprasDia.forEach(compra => {
+      compra.itens.forEach(item => {
+        // Atualiza o preço/kg dos itens no histórico
+        if (prices[item.material]) {
+          item.precoKg = prices[item.material];
+          item.total = item.pesoKg * item.precoKg;
+        }
+      });
+      
+      // Recalcula o total da compra no histórico
+      compra.totalCompra = compra.itens.reduce((s, i) => s + i.total, 0);
+    });
+    
+    saveComprasDia();
+    renderComprasDia();
+    updateTotais();
+  }
+  
+  console.log("Interface atualizada com sucesso!");
 }
 
 function adicionarNovoMaterial() {
@@ -596,7 +525,6 @@ function adicionarNovoMaterial() {
   savePrices();
   
   // Atualiza interface
-  renderMaterialOptions();
   renderMateriaisList();
   
   // Limpa campos
@@ -606,6 +534,9 @@ function adicionarNovoMaterial() {
   // Feedback
   showToast(`✅ Material "${nome}" adicionado: ${formatBRL(preco)}/kg`, "sucesso");
   if (novoMaterialNome) novoMaterialNome.focus();
+  
+  // ATUALIZAÇÃO IMEDIATA: Atualiza a lista principal
+  atualizarInterfaceAposEdicao();
 }
 
 function removerMaterial(material) {
@@ -645,13 +576,10 @@ function removerMaterial(material) {
   const isPadrao = MATERIAIS_PADRAO.includes(material);
   
   if (isPadrao) {
-    // Para materiais padrão, apenas remove do estado atual, mas mantém na lista padrão
-    // (será restaurado ao resetar preços)
-    if (!confirm(`"${material}" é um material padrão.\n\nRemover apenas das configurações atuais?\n\nPara restaurar todos os materiais padrão, use o botão "Restaurar padrão" na tela de preços.`)) {
+    if (!confirm(`"${material}" é um material padrão.\n\nRemover apenas das configurações atuais?`)) {
       return;
     }
   } else {
-    // Para materiais personalizados, confirmação normal
     if (!confirm(`Remover o material "${material}"?`)) {
       return;
     }
@@ -662,12 +590,60 @@ function removerMaterial(material) {
   savePrices();
   
   // Atualiza interface
-  renderMaterialOptions();
   renderMateriaisList();
   
   // Feedback
   showToast(`🗑️ Material "${material}" removido`, "info");
+  
+  // ATUALIZAÇÃO IMEDIATA: Atualiza a lista principal
+  atualizarInterfaceAposEdicao();
 }
+
+// ---------- Storage ----------
+function loadPrices() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_PRECOS);
+    
+    if (!saved) {
+      console.log("Nenhum preço salvo, usando padrão");
+      const defaultCopy = { ...defaultPrices };
+      savePrices();
+      return defaultCopy;
+    }
+    
+    const parsed = JSON.parse(saved);
+    
+    if (!parsed || typeof parsed !== 'object' || Object.keys(parsed).length === 0) {
+      console.log("Preços inválidos, usando padrão");
+      const defaultCopy = { ...defaultPrices };
+      savePrices();
+      return defaultCopy;
+    }
+    
+    console.log("Preços carregados do localStorage:", parsed);
+    return parsed;
+    
+  } catch (error) {
+    console.error("Erro ao carregar preços:", error);
+    const defaultCopy = { ...defaultPrices };
+    savePrices();
+    return defaultCopy;
+  }
+}
+
+function savePrices() {
+  const paraSalvar = {};
+  Object.keys(prices).forEach(key => {
+    if (typeof key === 'string' && key.trim() !== '') {
+      paraSalvar[key] = prices[key];
+    }
+  });
+  
+  localStorage.setItem(STORAGE_KEY_PRECOS, JSON.stringify(paraSalvar));
+  console.log("Preços salvos:", paraSalvar);
+}
+
+// ... (o resto das funções permanece igual)
 
 // ---------- COMPRAS ----------
 function cancelarCompra() {
@@ -682,7 +658,6 @@ function cancelarCompra() {
   const numItens = compraAtiva.itens.length;
   const totalCompra = compraAtiva.itens.reduce((s, i) => s + i.total, 0);
   
-  // Lista os materiais para o toast detalhado
   const materiais = {};
   compraAtiva.itens.forEach(item => {
     materiais[item.material] = (materiais[item.material] || 0) + 1;
@@ -698,7 +673,6 @@ function cancelarCompra() {
   updateTotais();
   atualizarEstadoUI();
   
-  // Toast de confirmação mais detalhado
   if (numItens > 0) {
     showToast(`🗑️ Compra #${idCompra} cancelada\n${numItens} itens (${materiaisTexto})\nTotal: ${formatBRL(totalCompra)}`, "info", 4000);
   } else {
@@ -728,7 +702,6 @@ function renderComprasDia() {
     contadorComprasEl.textContent = `${comprasDia.length} compra${comprasDia.length !== 1 ? 's' : ''}`;
   }
   
-  // Ordena por ID (mais recente primeiro)
   const comprasOrdenadas = [...comprasDia].sort((a, b) => {
     return parseInt(b.idCompra) - parseInt(a.idCompra);
   });
@@ -738,7 +711,6 @@ function renderComprasDia() {
     li.className = "item";
     li.style.cursor = "pointer";
     
-    // Conta quantos itens de cada material
     const resumoMateriais = {};
     compra.itens.forEach(item => {
       resumoMateriais[item.material] = (resumoMateriais[item.material] || 0) + 1;
@@ -760,7 +732,6 @@ function renderComprasDia() {
       <button class="icon-btn btn-remover-compra" data-index="${idx}" aria-label="Remover compra">🗑</button>
     `;
     
-    // Clique para ver detalhes
     const metaElement = li.querySelector(".meta");
     if (metaElement) {
       metaElement.addEventListener("click", () => {
@@ -772,7 +743,6 @@ function renderComprasDia() {
       });
     }
     
-    // Botão para remover compra
     const btnRemover = li.querySelector(".btn-remover-compra");
     if (btnRemover) {
       btnRemover.addEventListener("click", (e) => {
@@ -786,7 +756,6 @@ function renderComprasDia() {
           renderComprasDia();
           updateTotais();
           
-          // Toast de confirmação
           showToast(`🗑️ Compra #${compra.idCompra} removida do histórico\nTotal: ${formatBRL(totalCompra)}`, "info");
         }
       });
@@ -866,15 +835,11 @@ function atualizarEstadoUI() {
   if (btnNovaCompra) btnNovaCompra.disabled = temCompraAtiva;
   if (btnFinalizarCompra) btnFinalizarCompra.disabled = !temCompraAtiva || (compraAtiva && compraAtiva.itens.length === 0);
   
-  // Material sempre visível
   if (materialSelect) materialSelect.disabled = false;
-
-  // Peso e ações só com compra ativa
   if (pesoInput) pesoInput.disabled = !temCompraAtiva;
   if (btnAddItem) btnAddItem.disabled = !temCompraAtiva;
   if (btnClearInputs) btnClearInputs.disabled = !temCompraAtiva;
   
-  // Mostra/oculta seção de compras finalizadas
   const comprasSection = document.getElementById("comprasFinalizadasSection");
   if (comprasSection) {
     comprasSection.style.display = comprasDia.length === 0 ? "none" : "block";
@@ -896,7 +861,6 @@ function novaCompra() {
   updateTotais();
   atualizarEstadoUI();
   
-  // Feedback visual
   showToast(`📋 Compra #${seq} iniciada`, "info");
   if (materialSelect) materialSelect.focus();
 }
@@ -921,7 +885,6 @@ function finalizarCompra() {
   updateTotais();
   atualizarEstadoUI();
   
-  // Feedback
   showToast(`✅ Compra #${idCompra} finalizada: ${formatBRL(totalCompra)}`, "sucesso");
 }
 
@@ -933,10 +896,9 @@ function addItem() {
   const precoKg = prices[material] || 0;
   const pesoKg = pesoInput ? parseNumber(pesoInput.value) : 0;
 
-  // Validações
   if (!material || !prices[material]) {
     showToast("⚠️ Material não encontrado. Atualize a lista.", "erro");
-    renderMaterialOptions(); // Força atualização
+    renderMaterialOptions();
     return;
   }
 
@@ -945,7 +907,6 @@ function addItem() {
     return;
   }
 
-  // Calcula total antes de adicionar
   const totalItem = pesoKg * precoKg;
 
   compraAtiva.itens.push({
@@ -960,12 +921,11 @@ function addItem() {
   updateTotais();
   atualizarEstadoUI();
 
-  // FEEDBACK VISUAL - TOAST
   showToast(`✅ ${material} adicionado: ${formatKg(pesoKg)} = ${formatBRL(totalItem)}`, "sucesso");
 
   if (pesoInput) pesoInput.value = "";
   syncPriceAndTotal();
-  if (pesoInput) pesoInput.focus(); // Foco automático para próximo item
+  if (pesoInput) pesoInput.focus();
 }
 
 function renderItens() {
@@ -1016,7 +976,6 @@ function renderItens() {
     const btnRemover = li.querySelector("button");
     if (btnRemover) {
       btnRemover.onclick = () => {
-        // Salva os dados do item antes de remover (para o toast)
         const itemRemovido = compraAtiva.itens[idx];
         
         compraAtiva.itens.splice(idx, 1);
@@ -1025,11 +984,9 @@ function renderItens() {
         updateTotais();
         atualizarEstadoUI();
         
-        // Mostra toast de confirmação
         showToast(`🗑️ Item removido: ${itemRemovido.material} (${formatKg(itemRemovido.pesoKg)})`, "info");
       };
       
-      // Touch event para mobile
       btnRemover.addEventListener("touchstart", (e) => {
         e.preventDefault();
         const itemRemovido = compraAtiva.itens[idx];
@@ -1072,7 +1029,6 @@ function syncPriceAndTotal() {
 // ---------- WhatsApp ----------
 function fecharDiaWhatsApp() {
   if (comprasDia.length === 0) {
-    // Toast de erro se não houver compras
     showToast("⚠️ Nenhuma compra finalizada no dia.", "erro");
     return;
   }
@@ -1085,10 +1041,8 @@ function fecharDiaWhatsApp() {
     msg += `*Compra #${c.idCompra}*\n`;
     msg += `• Itens: ${c.itens.length}\n`;
     
-    // Agora vamos calcular por material: peso total, quantidade e valor total
     const resumoPorMaterial = {};
     
-    // Agrupa por material
     c.itens.forEach(item => {
       if (!resumoPorMaterial[item.material]) {
         resumoPorMaterial[item.material] = {
@@ -1103,7 +1057,6 @@ function fecharDiaWhatsApp() {
       resumoPorMaterial[item.material].valorTotal += item.total;
     });
     
-    // Adiciona detalhes por material
     Object.entries(resumoPorMaterial).forEach(([material, dados]) => {
       msg += `  - ${material}:\n`;
       msg += `    Quantidade: ${dados.quantidade} item${dados.quantidade !== 1 ? 's' : ''}\n`;
@@ -1111,23 +1064,17 @@ function fecharDiaWhatsApp() {
       msg += `    Valor total: ${formatBRL(dados.valorTotal)}\n`;
     });
     
-    // Separador entre materiais
     msg += `\n`;
-    
-    // Total da compra
     msg += `• *Total da compra:* ${formatBRL(c.totalCompra)}\n\n`;
     
-    // Separador entre compras (exceto na última)
     if (index < comprasDia.length - 1) {
       msg += `────────────────\n\n`;
     }
   });
 
-  // Totais gerais do dia
   const totalDia = comprasDia.reduce((s, c) => s + c.totalCompra, 0);
   const totalItensDia = comprasDia.reduce((s, c) => s + c.itens.length, 0);
   
-  // Resumo geral por material do dia TODO
   const resumoGeralDia = {};
   comprasDia.forEach(compra => {
     compra.itens.forEach(item => {
@@ -1147,7 +1094,6 @@ function fecharDiaWhatsApp() {
   
   msg += `────────────────\n📊 *RESUMO GERAL DO DIA*\n\n`;
   
-  // Adiciona resumo por material
   Object.entries(resumoGeralDia).forEach(([material, dados]) => {
     msg += `*${material}:*\n`;
     msg += `  Itens: ${dados.quantidade}\n`;
@@ -1161,13 +1107,11 @@ function fecharDiaWhatsApp() {
   msg += `🧾 *Total de compras:* ${comprasDia.length}\n`;
   msg += `⏰ *Horário:* ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
 
-  // Abre WhatsApp
   window.open(
     `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`,
     "_blank"
   );
 
-  // Limpa após enviar
   comprasDia = [];
   localStorage.removeItem(STORAGE_KEY_COMPRAS_DIA);
   localStorage.removeItem(STORAGE_KEY_SEQ_DIA);
@@ -1177,90 +1121,6 @@ function fecharDiaWhatsApp() {
   atualizarEstadoUI();
   
   showToast("📤 Relatório detalhado enviado para WhatsApp!", "sucesso");
-}
-
-// ---------- PREÇOS ----------
-function salvarPrecos() {
-  const novos = {};
-  if (pricesForm) {
-    pricesForm.querySelectorAll("input").forEach(inp => {
-      novos[inp.dataset.material] = parseNumber(inp.value) || 0;
-    });
-  }
-  prices = novos;
-  savePrices();
-  renderMaterialOptions();
-  syncPriceAndTotal();
-  if (pricesDialog) pricesDialog.close();
-  showToast("✅ Preços salvos com sucesso", "sucesso");
-}
-
-function resetarPrecos() {
-  if (!confirm("Restaurar preços padrão? Esta ação não pode ser desfeita.")) return;
-  
-  prices = { ...defaultPrices };
-  savePrices();
-  renderPricesEditor();
-  renderMaterialOptions();
-  syncPriceAndTotal();
-  showToast("✅ Preços restaurados para padrão", "sucesso");
-}
-
-// ---------- Storage ----------
-function loadPrices() {
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY_PRECOS);
-    
-    if (!saved) {
-      console.log("Nenhum preço salvo, usando padrão");
-      const defaultCopy = { ...defaultPrices };
-      prices = defaultCopy;
-      savePrices();
-      return defaultCopy;
-    }
-    
-    const parsed = JSON.parse(saved);
-    
-    if (!parsed || typeof parsed !== 'object' || Object.keys(parsed).length === 0) {
-      console.log("Preços inválidos, usando padrão");
-      const defaultCopy = { ...defaultPrices };
-      prices = defaultCopy;
-      savePrices();
-      return defaultCopy;
-    }
-    
-    // Garante que todos os materiais padrão existam
-    let merged = { ...defaultPrices };
-    
-    // Adiciona todos os materiais personalizados salvos
-    Object.keys(parsed).forEach(material => {
-      if (material && typeof material === 'string' && material.trim() !== '') {
-        merged[material] = parseFloat(parsed[material]) || 0;
-      }
-    });
-    
-    console.log("Preços mesclados carregados:", merged);
-    prices = merged;
-    return merged;
-    
-  } catch (error) {
-    console.error("Erro ao carregar preços:", error);
-    const defaultCopy = { ...defaultPrices };
-    prices = defaultCopy;
-    savePrices();
-    return defaultCopy;
-  }
-}
-
-function savePrices() {
-  const paraSalvar = {};
-  Object.keys(prices).forEach(key => {
-    if (typeof key === 'string' && key.trim() !== '') {
-      paraSalvar[key] = prices[key];
-    }
-  });
-  
-  localStorage.setItem(STORAGE_KEY_PRECOS, JSON.stringify(paraSalvar));
 }
 
 function saveCompraAtiva() {
@@ -1286,13 +1146,8 @@ function formatKg(v) {
 function parseNumber(v) {
   if (!v && v !== 0) return 0;
   
-  // Converte para string e trata vírgulas
   let str = String(v).trim();
-  
-  // Remove todos os pontos (separadores de milhar) e substitui vírgula por ponto
   str = str.replace(/\./g, '').replace(',', '.');
-  
-  // Remove caracteres não numéricos exceto ponto e sinal
   str = str.replace(/[^\d.-]/g, '');
   
   const num = parseFloat(str);
@@ -1300,25 +1155,23 @@ function parseNumber(v) {
 }
 
 function showToast(mensagem, tipo = "sucesso", duracao = 3000) {
-  // Remove toast anterior se existir
   let toastAntigo = document.getElementById("toast");
   if (toastAntigo) {
     toastAntigo.parentNode.removeChild(toastAntigo);
   }
   
-  // Define cores baseadas no tipo
   let bgColor, textColor;
   switch(tipo) {
     case "sucesso":
-      bgColor = "var(--primary)"; // Verde
+      bgColor = "var(--primary)";
       textColor = "white";
       break;
     case "erro":
-      bgColor = "var(--danger)"; // Vermelho
+      bgColor = "var(--danger)";
       textColor = "white";
       break;
     case "info":
-      bgColor = "rgba(59, 130, 246, 0.9)"; // Azul
+      bgColor = "rgba(59, 130, 246, 0.9)";
       textColor = "white";
       break;
     default:
@@ -1326,18 +1179,15 @@ function showToast(mensagem, tipo = "sucesso", duracao = 3000) {
       textColor = "white";
   }
   
-  // Cria novo toast
   let toast = document.createElement("div");
   toast.id = "toast";
   
-  // Se a mensagem tiver quebras de linha, usar innerHTML
   if (mensagem.includes('\n')) {
     toast.innerHTML = mensagem.replace(/\n/g, '<br>');
   } else {
     toast.textContent = mensagem;
   }
   
-  // Aplica estilos
   toast.style.cssText = `
     position: fixed;
     top: 20px;
@@ -1359,7 +1209,6 @@ function showToast(mensagem, tipo = "sucesso", duracao = 3000) {
     border-left: 4px solid rgba(255,255,255,0.3);
   `;
   
-  // Para mobile, ajusta posição
   if (window.innerWidth <= 768) {
     toast.style.top = "10px";
     toast.style.right = "10px";
@@ -1368,18 +1217,15 @@ function showToast(mensagem, tipo = "sucesso", duracao = 3000) {
     toast.style.transform = "translateY(-100px)";
   }
   
-  // Anima entrada
   setTimeout(() => {
     toast.style.opacity = "1";
     toast.style.transform = window.innerWidth <= 768 ? "translateY(0)" : "translateX(0)";
   }, 10);
   
-  // Remove após a duração especificada
   setTimeout(() => {
     toast.style.opacity = "0";
     toast.style.transform = window.innerWidth <= 768 ? "translateY(-100px)" : "translateX(100px)";
     
-    // Remove completamente após animação
     setTimeout(() => {
       if (toast.parentNode) {
         toast.parentNode.removeChild(toast);
@@ -1395,7 +1241,6 @@ function getNextSeqDia() {
   const hoje = new Date().toISOString().slice(0, 10);
   const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_SEQ_DIA)) || {};
 
-  // Reset se for outro dia
   if (saved.date !== hoje) {
     saved.date = hoje;
     saved.seq = 1;
@@ -1405,30 +1250,4 @@ function getNextSeqDia() {
 
   localStorage.setItem(STORAGE_KEY_SEQ_DIA, JSON.stringify(saved));
   return String(saved.seq).padStart(3, "0");
-}
-
-// ---------- FUNÇÃO PARA RECARREGAR DADOS (BOTÃO DE EMERGÊNCIA) ----------
-function forceReloadData() {
-  console.log("Forçando recarga de dados...");
-  
-  // Força recarregar preços
-  prices = loadPrices();
-  
-  // Força renderizar opções
-  renderMaterialOptions();
-  
-  // Atualiza interface
-  syncPriceAndTotal();
-  
-  // Mostra feedback
-  showToast("✅ Preços recarregados!", "sucesso");
-  
-  // Log para debug
-  console.log("Preços recarregados:", prices);
-  console.log("Opções no select:", materialSelect.options.length);
-}
-
-// Mostra botão apenas no mobile
-if (window.innerWidth <= 768) {
-  document.getElementById('mobileFix').style.display = 'block';
 }

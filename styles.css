@@ -234,11 +234,6 @@ input:focus, select:focus{
   color:var(--text);
 }
 
-/* compatibilidade antiga (não usar mais) */
-.item .sub{
-  display:none;
-}
-
 /* ================= AÇÕES ================= */
 .icon-btn{
   width:40px;
@@ -318,25 +313,12 @@ input:focus, select:focus{
   font-size:15px;
 }
 
-.prices-form{
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap:10px;
-  margin-top:10px;
-}
-
 .dialog-actions{
   margin-top:12px;
   display:flex;
   justify-content:flex-end;
   gap:10px;
   flex-wrap:wrap;
-}
-
-@media (max-width:520px){
-  .prices-form{
-    grid-template-columns: 1fr;
-  }
 }
 
 /* ================= NOVOS ESTILOS ================= */
@@ -422,29 +404,6 @@ input:focus, select:focus{
   font-weight: 600;
 }
 
-/* Toast notifications */
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes slideOut {
-  from {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-20px);
-  }
-}
-
 /* Melhorias para itens clicáveis */
 .item[style*="cursor: pointer"]:hover {
   background: rgba(255,255,255,0.05);
@@ -519,14 +478,14 @@ input:focus, select:focus{
   }
 }
 
-/* ================= GERENCIAR MATERIAIS ================= */
+/* ================= GERENCIAR MATERIAIS E PREÇOS ================= */
 .materiais-container {
   min-width: 400px;
   max-width: 500px;
 }
 
 .materiais-list {
-  max-height: 300px;
+  max-height: 350px;
   overflow-y: auto;
   margin-bottom: 20px;
   border: 1px solid var(--border);
@@ -539,7 +498,7 @@ input:focus, select:focus{
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
+  padding: 12px;
   border-bottom: 1px solid rgba(255,255,255,0.05);
   transition: background 0.2s;
 }
@@ -556,17 +515,35 @@ input:focus, select:focus{
 .material-info {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
+  flex: 1;
 }
 
 .material-name {
   font-weight: 600;
   color: var(--text);
+  font-size: 14px;
 }
 
-.material-price {
-  font-size: 12px;
-  color: var(--muted);
+.material-price-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.material-price-edit input {
+  width: 100px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,0.04);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.material-price-edit input:focus {
+  border-color: var(--primary);
+  outline: none;
 }
 
 .material-actions {
@@ -584,16 +561,32 @@ input:focus, select:focus{
   font-size: 12px;
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 }
 
 .btn-remove-material:hover {
   background: rgba(239,68,68,0.2);
 }
 
-.btn-remove-material:disabled {
+.btn-save-price {
+  background: rgba(34,197,94,0.1);
+  color: var(--primary);
+  border: 1px solid rgba(34,197,94,0.3);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.btn-save-price:hover {
+  background: rgba(34,197,94,0.2);
+}
+
+.btn-save-price:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-  background: rgba(239,68,68,0.05);
 }
 
 .material-default {
@@ -642,6 +635,29 @@ input:focus, select:focus{
   white-space: nowrap;
 }
 
+/* Toast notifications */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+}
+
 /* Responsividade */
 @media (max-width: 600px) {
   .materiais-container {
@@ -655,10 +671,20 @@ input:focus, select:focus{
   .material-item {
     flex-direction: column;
     align-items: flex-start;
-    gap: 8px;
+    gap: 12px;
   }
   
   .material-actions {
     align-self: flex-end;
+    width: 100%;
+    justify-content: space-between;
+  }
+  
+  .material-price-edit {
+    width: 100%;
+  }
+  
+  .material-price-edit input {
+    flex: 1;
   }
 }
