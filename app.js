@@ -295,11 +295,11 @@ function renderMateriaisList() {
     const item = document.createElement("div");
     item.className = "material-item";
     
+    // REMOVIDO: ${isPadrao ? '<span class="material-default">Padrão</span>' : ''}
     item.innerHTML = `
       <div class="material-info">
         <div>
           <span class="material-name">${material}</span>
-          ${isPadrao ? '<span class="material-default">Padrão</span>' : ''}
         </div>
         <div class="material-price">
           Preço: ${formatBRL(prices[material])}/kg
@@ -309,36 +309,31 @@ function renderMateriaisList() {
         <button 
           class="btn-remove-material"
           data-material="${material}"
-          ${isPadrao ? 'disabled title="Material padrão não pode ser removido"' : ''}
+          ${isPadrao ? 'title="Material padrão - Clique para remover"' : ''}
         >
           Remover
         </button>
       </div>
     `;
     
-    // Event listener para remover material
-    if (!isPadrao) {
-      const btnRemover = item.querySelector(".btn-remove-material");
-      btnRemover.addEventListener("click", () => {
-        if (confirm(`Remover o material "${material}"?`)) {
-          removerMaterial(material);
-        }
-      });
-    }
+    // Event listener para remover material - AGORA ATIVADO PARA TODOS
+    const btnRemover = item.querySelector(".btn-remove-material");
+    btnRemover.addEventListener("click", () => {
+      removerMaterial(material);
+    });
     
     materiaisList.appendChild(item);
   });
   
-  // Mensagem se não houver materiais personalizados
-  const materiaisPersonalizados = Object.keys(prices).filter(m => !MATERIAIS_PADRAO.includes(m));
-  if (materiaisPersonalizados.length === 0) {
+  // Mensagem se não houver materiais
+  if (Object.keys(prices).length === 0) {
     const mensagem = document.createElement("div");
     mensagem.className = "material-item";
     mensagem.style.textAlign = "center";
     mensagem.style.color = "var(--muted)";
     mensagem.innerHTML = `
       <div class="material-info">
-        <div class="material-name">Nenhum material personalizado</div>
+        <div class="material-name">Nenhum material cadastrado</div>
         <div class="material-price">Adicione materiais acima</div>
       </div>
     `;
@@ -394,30 +389,52 @@ function adicionarNovoMaterial() {
 }
 
 function removerMaterial(material) {
-  // Não permite remover materiais padrão
-  if (MATERIAIS_PADRAO.includes(material)) {
-    showToast(`⚠️ "${material}" é um material padrão e não pode ser removido`, "erro");
-    return;
-  }
-  
   // Verifica se o material está sendo usado em compras
   let emUso = false;
+  let ondeEstaSendoUsado = "";
   
   // Verifica na compra ativa
   if (compraAtiva && compraAtiva.itens) {
-    emUso = compraAtiva.itens.some(item => item.material === material);
+    const itensNaCompraAtiva = compraAtiva.itens.filter(item => item.material === material);
+    if (itensNaCompraAtiva.length > 0) {
+      emUso = true;
+      ondeEstaSendoUsado = `compra ativa #${compraAtiva.idCompra} (${itensNaCompraAtiva.length} itens)`;
+    }
   }
   
   // Verifica nas compras do dia
   if (!emUso) {
-    emUso = comprasDia.some(compra => 
+    const comprasComMaterial = comprasDia.filter(compra => 
       compra.itens && compra.itens.some(item => item.material === material)
     );
+    if (comprasComMaterial.length > 0) {
+      emUso = true;
+      const totalItens = comprasComMaterial.reduce((total, compra) => {
+        return total + compra.itens.filter(item => item.material === material).length;
+      }, 0);
+      ondeEstaSendoUsado = `histórico (${comprasComMaterial.length} compras, ${totalItens} itens)`;
+    }
   }
   
   if (emUso) {
-    showToast(`⚠️ Não é possível remover "${material}" porque está sendo usado em compras`, "erro");
+    showToast(`⚠️ Não é possível remover "${material}" porque está sendo usado em ${ondeEstaSendoUsado}`, "erro");
     return;
+  }
+  
+  // Verifica se é um material padrão
+  const isPadrao = MATERIAIS_PADRAO.includes(material);
+  
+  if (isPadrao) {
+    // Para materiais padrão, apenas remove do estado atual, mas mantém na lista padrão
+    // (será restaurado ao resetar preços)
+    if (!confirm(`"${material}" é um material padrão.\n\nRemover apenas das configurações atuais?\n\nPara restaurar todos os materiais padrão, use o botão "Restaurar padrão" na tela de preços.`)) {
+      return;
+    }
+  } else {
+    // Para materiais personalizados, confirmação normal
+    if (!confirm(`Remover o material "${material}"?`)) {
+      return;
+    }
   }
   
   // Remove do objeto de preços
@@ -443,6 +460,17 @@ function cancelarCompra() {
   
   const idCompra = compraAtiva.idCompra;
   const numItens = compraAtiva.itens.length;
+  const totalCompra = compraAtiva.itens.reduce((s, i) => s + i.total, 0);
+  
+  // Lista os materiais para o toast detalhado
+  const materiais = {};
+  compraAtiva.itens.forEach(item => {
+    materiais[item.material] = (materiais[item.material] || 0) + 1;
+  });
+  
+  const materiaisTexto = Object.entries(materiais)
+    .map(([mat, qtd]) => `${qtd}× ${mat}`)
+    .join(", ");
   
   compraAtiva = null;
   saveCompraAtiva();
@@ -450,9 +478,9 @@ function cancelarCompra() {
   updateTotais();
   atualizarEstadoUI();
   
-  // Toast de confirmação
+  // Toast de confirmação mais detalhado
   if (numItens > 0) {
-    showToast(`🗑️ Compra #${idCompra} cancelada (${numItens} itens removidos)`, "info");
+    showToast(`🗑️ Compra #${idCompra} cancelada\n${numItens} itens (${materiaisTexto})\nTotal: ${formatBRL(totalCompra)}`, "info", 4000);
   } else {
     showToast(`🗑️ Compra #${idCompra} cancelada`, "info");
   }
@@ -521,10 +549,16 @@ function renderComprasDia() {
     li.querySelector(".btn-remover-compra").addEventListener("click", (e) => {
       e.stopPropagation();
       if (confirm(`Remover a compra #${compra.idCompra}?`)) {
+        const compraRemovida = comprasDia[idx];
+        const totalCompra = compraRemovida.totalCompra || 0;
+        
         comprasDia.splice(idx, 1);
         saveComprasDia();
         renderComprasDia();
         updateTotais();
+        
+        // Toast de confirmação
+        showToast(`🗑️ Compra #${compra.idCompra} removida do histórico\nTotal: ${formatBRL(totalCompra)}`, "info");
       }
     });
     
@@ -733,11 +767,17 @@ function renderItens() {
     `;
 
     li.querySelector("button").onclick = () => {
+      // Salva os dados do item antes de remover (para o toast)
+      const itemRemovido = compraAtiva.itens[idx];
+      
       compraAtiva.itens.splice(idx, 1);
       saveCompraAtiva();
       renderItens();
       updateTotais();
       atualizarEstadoUI();
+      
+      // Mostra toast de confirmação
+      showToast(`🗑️ Item removido: ${itemRemovido.material} (${formatKg(itemRemovido.pesoKg)})`, "info");
     };
 
     itensList.appendChild(li);
@@ -777,27 +817,87 @@ function fecharDiaWhatsApp() {
   let msg = `♻️ *MP RECICLAGEM*\n📅 *Fechamento do dia:* ${data}\n\n`;
   msg += `────────────────\n🧾 *COMPRAS DO DIA*\n\n`;
 
-  comprasDia.forEach(c => {
+  comprasDia.forEach((c, index) => {
     msg += `*Compra #${c.idCompra}*\n`;
     msg += `• Itens: ${c.itens.length}\n`;
     
-    // Resumo por material
-    const resumo = {};
+    // Agora vamos calcular por material: peso total, quantidade e valor total
+    const resumoPorMaterial = {};
+    
+    // Agrupa por material
     c.itens.forEach(item => {
-      resumo[item.material] = (resumo[item.material] || 0) + 1;
+      if (!resumoPorMaterial[item.material]) {
+        resumoPorMaterial[item.material] = {
+          quantidade: 0,
+          pesoTotal: 0,
+          valorTotal: 0
+        };
+      }
+      
+      resumoPorMaterial[item.material].quantidade += 1;
+      resumoPorMaterial[item.material].pesoTotal += item.pesoKg;
+      resumoPorMaterial[item.material].valorTotal += item.total;
     });
     
-    Object.entries(resumo).forEach(([mat, qtd]) => {
-      msg += `  - ${qtd}x ${mat}\n`;
+    // Adiciona detalhes por material
+    Object.entries(resumoPorMaterial).forEach(([material, dados]) => {
+      msg += `  - ${material}:\n`;
+      msg += `    Quantidade: ${dados.quantidade} item${dados.quantidade !== 1 ? 's' : ''}\n`;
+      msg += `    Peso total: ${formatKg(dados.pesoTotal)}\n`;
+      msg += `    Valor total: ${formatBRL(dados.valorTotal)}\n`;
     });
     
-    msg += `• Total: ${formatBRL(c.totalCompra)}\n\n`;
+    // Separador entre materiais
+    msg += `\n`;
+    
+    // Total da compra
+    msg += `• *Total da compra:* ${formatBRL(c.totalCompra)}\n\n`;
+    
+    // Separador entre compras (exceto na última)
+    if (index < comprasDia.length - 1) {
+      msg += `────────────────\n\n`;
+    }
   });
 
+  // Totais gerais do dia
   const totalDia = comprasDia.reduce((s, c) => s + c.totalCompra, 0);
-  msg += `────────────────\n💰 *TOTAL DO DIA:* ${formatBRL(totalDia)}\n`;
-  msg += `📊 *Total de compras:* ${comprasDia.length}`;
+  const totalItensDia = comprasDia.reduce((s, c) => s + c.itens.length, 0);
+  
+  // Resumo geral por material do dia TODO
+  const resumoGeralDia = {};
+  comprasDia.forEach(compra => {
+    compra.itens.forEach(item => {
+      if (!resumoGeralDia[item.material]) {
+        resumoGeralDia[item.material] = {
+          quantidade: 0,
+          pesoTotal: 0,
+          valorTotal: 0
+        };
+      }
+      
+      resumoGeralDia[item.material].quantidade += 1;
+      resumoGeralDia[item.material].pesoTotal += item.pesoKg;
+      resumoGeralDia[item.material].valorTotal += item.total;
+    });
+  });
+  
+  msg += `────────────────\n📊 *RESUMO GERAL DO DIA*\n\n`;
+  
+  // Adiciona resumo por material
+  Object.entries(resumoGeralDia).forEach(([material, dados]) => {
+    msg += `*${material}:*\n`;
+    msg += `  Itens: ${dados.quantidade}\n`;
+    msg += `  Peso total: ${formatKg(dados.pesoTotal)}\n`;
+    msg += `  Valor total: ${formatBRL(dados.valorTotal)}\n\n`;
+  });
+  
+  msg += `────────────────\n`;
+  msg += `💰 *TOTAL DO DIA:* ${formatBRL(totalDia)}\n`;
+  msg += `📦 *Total de itens:* ${totalItensDia}\n`;
+  msg += `🧾 *Total de compras:* ${comprasDia.length}\n`;
+  msg += `⏰ *Horário:* ${new Date().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`;
 
+  // Abre WhatsApp
   window.open(
     `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`,
     "_blank"
@@ -812,7 +912,7 @@ function fecharDiaWhatsApp() {
   updateTotais();
   atualizarEstadoUI();
   
-  showToast("📤 Relatório enviado para WhatsApp!", "sucesso");
+  showToast("📤 Relatório detalhado enviado para WhatsApp!", "sucesso");
 }
 
 // ---------- PREÇOS ----------
@@ -916,7 +1016,7 @@ function parseNumber(v) {
   return Number(String(v).replace(",", "."));
 }
 
-function showToast(mensagem, tipo = "sucesso") {
+function showToast(mensagem, tipo = "sucesso", duracao = 3000) {
   // Remove toast anterior se existir
   let toastAntigo = document.getElementById("toast");
   if (toastAntigo) {
@@ -946,7 +1046,13 @@ function showToast(mensagem, tipo = "sucesso") {
   // Cria novo toast
   let toast = document.createElement("div");
   toast.id = "toast";
-  toast.textContent = mensagem;
+  
+  // Se a mensagem tiver quebras de linha, usar innerHTML
+  if (mensagem.includes('\n')) {
+    toast.innerHTML = mensagem.replace(/\n/g, '<br>');
+  } else {
+    toast.textContent = mensagem;
+  }
   
   // Aplica estilos
   toast.style.cssText = `
@@ -964,8 +1070,9 @@ function showToast(mensagem, tipo = "sucesso") {
     transition: opacity 0.3s ease, transform 0.3s ease;
     font-size: 14px;
     font-weight: 500;
-    max-width: 300px;
+    max-width: 350px;
     word-break: break-word;
+    line-height: 1.4;
     border-left: 4px solid rgba(255,255,255,0.3);
   `;
   
@@ -975,7 +1082,7 @@ function showToast(mensagem, tipo = "sucesso") {
     toast.style.transform = "translateX(0)";
   }, 10);
   
-  // Remove após 3 segundos
+  // Remove após a duração especificada
   setTimeout(() => {
     toast.style.opacity = "0";
     toast.style.transform = "translateX(100px)";
@@ -986,7 +1093,7 @@ function showToast(mensagem, tipo = "sucesso") {
         toast.parentNode.removeChild(toast);
       }
     }, 300);
-  }, 3000);
+  }, duracao);
   
   document.body.appendChild(toast);
 }
