@@ -42,6 +42,9 @@ const formItem = document.getElementById("formItem");
 const btnClearInputs = document.getElementById("btnClearInputs");
 const btnClearAll = document.getElementById("btnClearAll");
 
+const btnNovaCompra = document.getElementById("btnNovaCompra");
+const btnFinalizarCompra = document.getElementById("btnFinalizarCompra");
+
 const pricesDialog = document.getElementById("pricesDialog");
 const btnOpenPrices = document.getElementById("btnOpenPrices");
 const pricesForm = document.getElementById("pricesForm");
@@ -56,6 +59,7 @@ function init() {
   renderItens();
   updateTotais();
   syncPriceAndTotal();
+  atualizarEstadoUI();
 
   materialSelect.addEventListener("change", syncPriceAndTotal);
   pesoInput.addEventListener("input", syncPriceAndTotal);
@@ -70,13 +74,17 @@ function init() {
     syncPriceAndTotal();
   });
 
+  // Cancelar compra
   btnClearAll.addEventListener("click", () => {
-    if (!confirm("Cancelar a compra atual?")) return;
-    compraAtiva = null;
-    saveCompraAtiva();
-    renderItens();
-    updateTotais();
+  if (!compraAtiva) return;
+  if (!confirm("Cancelar a compra atual?")) return;
+  compraAtiva = null;
+  saveCompraAtiva();
+  renderItens();
+  updateTotais();
+  atualizarEstadoUI();
   });
+
 
   // Preços
   btnOpenPrices.addEventListener("click", () => {
@@ -105,24 +113,37 @@ function init() {
   });
 }
 
+// ---------- CONTROLE DE ESTADO UI ----------
+function atualizarEstadoUI() {
+  const temCompraAtiva = !!compraAtiva;
+
+  btnNovaCompra.disabled = temCompraAtiva;
+  btnFinalizarCompra.disabled =
+    !temCompraAtiva || compraAtiva.itens.length === 0;
+
+  formItem.querySelectorAll("input, select, button").forEach(el => {
+    el.disabled = !temCompraAtiva;
+  });
+}
+
 // ---------- COMPRA ----------
 function novaCompra() {
+  if (compraAtiva) return;
+
   const seq = getNextSeqDia();
   compraAtiva = {
     idCompra: seq,
-    nomeVendedor: "",
     itens: []
   };
+
   saveCompraAtiva();
   renderItens();
   updateTotais();
+  atualizarEstadoUI();
 }
 
 function finalizarCompra() {
-  if (!compraAtiva || compraAtiva.itens.length === 0) {
-    alert("Não há itens nesta compra.");
-    return;
-  }
+  if (!compraAtiva || compraAtiva.itens.length === 0) return;
 
   compraAtiva.totalCompra = compraAtiva.itens.reduce((s, i) => s + i.total, 0);
   comprasDia.push(compraAtiva);
@@ -133,14 +154,12 @@ function finalizarCompra() {
 
   renderItens();
   updateTotais();
+  atualizarEstadoUI();
 }
 
 // ---------- Itens ----------
 function addItem() {
-  if (!compraAtiva) {
-    alert("Inicie uma nova compra.");
-    return;
-  }
+  if (!compraAtiva) return;
 
   const material = materialSelect.value;
   const precoKg = prices[material] || 0;
@@ -151,18 +170,17 @@ function addItem() {
     return;
   }
 
-  const total = pesoKg * precoKg;
-
   compraAtiva.itens.push({
     material,
     pesoKg,
     precoKg,
-    total
+    total: pesoKg * precoKg
   });
 
   saveCompraAtiva();
   renderItens();
   updateTotais();
+  atualizarEstadoUI();
 
   pesoInput.value = "";
   syncPriceAndTotal();
@@ -215,6 +233,7 @@ function renderItens() {
       saveCompraAtiva();
       renderItens();
       updateTotais();
+      atualizarEstadoUI();
     };
 
     itensList.appendChild(li);
@@ -258,7 +277,6 @@ function fecharDiaWhatsApp() {
   });
 
   const totalDia = comprasDia.reduce((s, c) => s + c.totalCompra, 0);
-
   msg += `────────────────\n💰 *TOTAL DO DIA:* ${formatBRL(totalDia)}`;
 
   window.open(
