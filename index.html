@@ -67,9 +67,14 @@
     <section class="card">
       <div class="card-title">
         <h2>Novo item</h2>
-        <button id="btnOpenPrices" class="btn btn-ghost" type="button">
-          Editar preços
-        </button>
+        <div>
+          <button id="btnGerenciarMateriais" class="btn btn-ghost" type="button">
+            📋 Gerenciar materiais
+          </button>
+          <button id="btnOpenPrices" class="btn btn-ghost" type="button">
+            💰 Editar preços
+          </button>
+        </div>
       </div>
 
       <form id="formItem" class="form">
@@ -213,6 +218,55 @@
             type="button"
           >
             Salvar
+          </button>
+        </div>
+      </form>
+    </dialog>
+
+    <!-- MODAL GERENCIAR MATERIAIS -->
+    <dialog id="materiaisDialog" class="dialog">
+      <form method="dialog" class="dialog-content">
+        <div class="dialog-title">
+          <h3>📋 Gerenciar materiais</h3>
+          <button class="btn btn-ghost" value="cancel" aria-label="Fechar">
+            ✕
+          </button>
+        </div>
+
+        <div class="materiais-container">
+          <!-- Lista de materiais existentes -->
+          <div id="materiaisList" class="materiais-list"></div>
+          
+          <!-- Formulário para adicionar novo material -->
+          <div class="add-material-form">
+            <h4>➕ Adicionar novo material</h4>
+            <div class="form-row">
+              <input 
+                type="text" 
+                id="novoMaterialNome" 
+                placeholder="Nome do material (ex: Bronze)"
+                maxlength="30"
+              />
+              <input 
+                type="number" 
+                id="novoMaterialPreco" 
+                step="0.01" 
+                min="0" 
+                placeholder="Preço/kg (ex: 12,50)"
+              />
+              <button id="btnAddMaterial" class="btn btn-primary" type="button">
+                Adicionar
+              </button>
+            </div>
+            <small class="hint">
+              Materiais adicionados aparecerão na lista de seleção.
+            </small>
+          </div>
+        </div>
+
+        <div class="dialog-actions">
+          <button class="btn btn-secondary" type="button" id="btnFecharMateriais">
+            Fechar
           </button>
         </div>
       </form>

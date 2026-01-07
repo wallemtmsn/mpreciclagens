@@ -14,6 +14,9 @@ const STORAGE_KEY_COMPRAS_DIA = "mp_compras_dia";
 const STORAGE_KEY_COMPRA_ATIVA = "mp_compra_ativa";
 const STORAGE_KEY_SEQ_DIA = "mp_seq_dia";
 
+// Materiais padrão que NÃO podem ser removidos
+const MATERIAIS_PADRAO = ["Plástico", "Ferro", "Alumínio", "Papelão", "Antimônio", "Cobre", "Latão", "Inox"];
+
 // Preços padrão (R$/kg)
 const defaultPrices = {
   "Plástico": 2.50,
@@ -27,13 +30,12 @@ const defaultPrices = {
 };
 
 // ---------- Estado ----------
-let prices = loadPrices();
-let compraAtiva = loadCompraAtiva();
-let comprasDia = loadComprasDia();
+let prices = {};
+let compraAtiva = null;
+let comprasDia = [];
 
 // ---------- Elementos ----------
 const btnSuporte = document.getElementById("btnSuporte");
-
 const materialSelect = document.getElementById("materialSelect");
 const pesoInput = document.getElementById("pesoInput");
 const precoKgEl = document.getElementById("precoKg");
@@ -43,30 +45,39 @@ const totalGeralEl = document.getElementById("totalGeral");
 const totalDiaEl = document.getElementById("totalDia");
 const contadorComprasEl = document.getElementById("contadorCompras");
 const comprasList = document.getElementById("comprasList");
-
 const formItem = document.getElementById("formItem");
 const btnAddItem = document.getElementById("btnAddItem");
 const btnClearInputs = document.getElementById("btnClearInputs");
 const btnClearAll = document.getElementById("btnClearAll");
-
 const btnNovaCompra = document.getElementById("btnNovaCompra");
 const btnFinalizarCompra = document.getElementById("btnFinalizarCompra");
 const btnFecharDia = document.getElementById("btnFecharDia");
-
 const pricesDialog = document.getElementById("pricesDialog");
 const btnOpenPrices = document.getElementById("btnOpenPrices");
 const pricesForm = document.getElementById("pricesForm");
 const btnSavePrices = document.getElementById("btnSavePrices");
 const btnResetPrices = document.getElementById("btnResetPrices");
-
 const detalhesDialog = document.getElementById("detalhesDialog");
 const detalhesTitulo = document.getElementById("detalhesTitulo");
 const detalhesConteudo = document.getElementById("detalhesConteudo");
+const materiaisDialog = document.getElementById("materiaisDialog");
+const btnGerenciarMateriais = document.getElementById("btnGerenciarMateriais");
+const materiaisList = document.getElementById("materiaisList");
+const novoMaterialNome = document.getElementById("novoMaterialNome");
+const novoMaterialPreco = document.getElementById("novoMaterialPreco");
+const btnAddMaterial = document.getElementById("btnAddMaterial");
+const btnFecharMateriais = document.getElementById("btnFecharMateriais");
 
 // ---------- Inicialização ----------
-init();
+document.addEventListener('DOMContentLoaded', init);
 
 function init() {
+  console.log("Inicializando MP Reciclagem...");
+  
+  // Carrega dados do localStorage
+  loadAllData();
+  
+  // Renderiza interface
   renderMaterialOptions();
   renderItens();
   renderComprasDia();
@@ -74,72 +85,140 @@ function init() {
   syncPriceAndTotal();
   atualizarEstadoUI();
 
-  // Event listeners
-  materialSelect.addEventListener("change", syncPriceAndTotal);
-  pesoInput.addEventListener("input", syncPriceAndTotal);
-  btnSuporte.addEventListener("click", abrirSuporteWhatsApp)
+  // Configura eventos
+  setupEventListeners();
   
-  // Adiciona foco ao peso quando material é selecionado
-  materialSelect.addEventListener("change", () => {
-    if (compraAtiva) {
-      pesoInput.focus();
-    }
-  });
-
-  formItem.addEventListener("submit", e => {
-    e.preventDefault();
-    addItem();
-  });
-
-  btnClearInputs.addEventListener("click", () => {
-    pesoInput.value = "";
-    syncPriceAndTotal();
-  });
-
-  // Cancelar compra
-  btnClearAll.addEventListener("click", () => {
-    if (!compraAtiva) return;
-    if (!confirm("Cancelar a compra atual? Todos os itens serão perdidos.")) return;
-    compraAtiva = null;
-    saveCompraAtiva();
-    renderItens();
-    updateTotais();
-    atualizarEstadoUI();
-  });
-
-  // Event listeners para botões principais
-  btnNovaCompra.addEventListener("click", novaCompra);
-  btnFinalizarCompra.addEventListener("click", finalizarCompra);
-  btnFecharDia.addEventListener("click", fecharDiaWhatsApp);
-
-  // Preços
-  btnOpenPrices.addEventListener("click", () => {
-    renderPricesEditor();
-    pricesDialog.showModal();
-  });
-
-  btnSavePrices.addEventListener("click", () => {
-    const novos = {};
-    pricesForm.querySelectorAll("input").forEach(inp => {
-      novos[inp.dataset.material] = parseNumber(inp.value) || 0;
-    });
-    prices = novos;
-    savePrices();
-    renderMaterialOptions();
-    syncPriceAndTotal();
-    pricesDialog.close();
-  });
-
-  btnResetPrices.addEventListener("click", () => {
-    prices = { ...defaultPrices };
-    savePrices();
-    renderPricesEditor();
-    renderMaterialOptions();
-    syncPriceAndTotal();
-  });
+  console.log("Sistema inicializado com sucesso!");
+  console.log("Materiais carregados:", Object.keys(prices).length);
+  console.log("Lista de materiais:", Object.keys(prices));
 }
 
-// ---------- RENDERIZAÇÃO ----------
+function loadAllData() {
+  try {
+    // Carrega preços
+    prices = loadPrices();
+    console.log("Preços carregados:", prices);
+    
+    // Carrega compra ativa
+    const compraAtivaData = localStorage.getItem(STORAGE_KEY_COMPRA_ATIVA);
+    if (compraAtivaData) {
+      compraAtiva = JSON.parse(compraAtivaData);
+      console.log("Compra ativa carregada:", compraAtiva);
+    }
+    
+    // Carrega compras do dia
+    const comprasDiaData = localStorage.getItem(STORAGE_KEY_COMPRAS_DIA);
+    if (comprasDiaData) {
+      comprasDia = JSON.parse(comprasDiaData) || [];
+      console.log("Compras do dia carregadas:", comprasDia.length);
+    }
+  } catch (error) {
+    console.error("Erro ao carregar dados:", error);
+    prices = { ...defaultPrices };
+    compraAtiva = null;
+    comprasDia = [];
+  }
+}
+
+function setupEventListeners() {
+  // Event listeners básicos
+  if (materialSelect) materialSelect.addEventListener("change", syncPriceAndTotal);
+  if (pesoInput) pesoInput.addEventListener("input", syncPriceAndTotal);
+  if (btnSuporte) btnSuporte.addEventListener("click", abrirSuporteWhatsApp);
+  
+  // Foco no peso quando material é selecionado
+  if (materialSelect) {
+    materialSelect.addEventListener("change", () => {
+      if (compraAtiva) {
+        setTimeout(() => pesoInput.focus(), 100);
+      }
+    });
+  }
+
+  // Formulário de item
+  if (formItem) {
+    formItem.addEventListener("submit", e => {
+      e.preventDefault();
+      addItem();
+    });
+  }
+
+  // Botões de limpeza
+  if (btnClearInputs) {
+    btnClearInputs.addEventListener("click", () => {
+      pesoInput.value = "";
+      syncPriceAndTotal();
+    });
+  }
+
+  // Cancelar compra
+  if (btnClearAll) {
+    btnClearAll.addEventListener("click", cancelarCompra);
+  }
+
+  // Botões principais
+  if (btnNovaCompra) btnNovaCompra.addEventListener("click", novaCompra);
+  if (btnFinalizarCompra) btnFinalizarCompra.addEventListener("click", finalizarCompra);
+  if (btnFecharDia) btnFecharDia.addEventListener("click", fecharDiaWhatsApp);
+
+  // Preços - modal
+  if (btnOpenPrices) {
+    btnOpenPrices.addEventListener("click", () => {
+      renderPricesEditor();
+      pricesDialog.showModal();
+    });
+  }
+
+  if (btnSavePrices) {
+    btnSavePrices.addEventListener("click", salvarPrecos);
+  }
+
+  if (btnResetPrices) {
+    btnResetPrices.addEventListener("click", resetarPrecos);
+  }
+
+  // Gerenciamento de materiais - CORRIGIDO
+  if (btnGerenciarMateriais) {
+    console.log("Configurando evento para btnGerenciarMateriais");
+    btnGerenciarMateriais.addEventListener("click", () => {
+      console.log("Abrindo modal de materiais...");
+      renderMateriaisList();
+      materiaisDialog.showModal();
+    });
+  } else {
+    console.error("btnGerenciarMateriais não encontrado!");
+  }
+  
+  if (btnAddMaterial) {
+    btnAddMaterial.addEventListener("click", adicionarNovoMaterial);
+  }
+  
+  if (btnFecharMateriais) {
+    btnFecharMateriais.addEventListener("click", () => {
+      materiaisDialog.close();
+    });
+  }
+  
+  // Enter nos campos adiciona material
+  if (novoMaterialNome) {
+    novoMaterialNome.addEventListener("keypress", (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        adicionarNovoMaterial();
+      }
+    });
+  }
+  
+  if (novoMaterialPreco) {
+    novoMaterialPreco.addEventListener("keypress", (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        adicionarNovoMaterial();
+      }
+    });
+  }
+}
+
 // ---------- FUNÇÃO DE SUPORTE ----------
 function abrirSuporteWhatsApp() {
   const mensagem = `Olá! Preciso de suporte com o sistema MP Reciclagem.`;
@@ -147,11 +226,19 @@ function abrirSuporteWhatsApp() {
   window.open(url, "_blank");
 }
 
+// ---------- RENDERIZAÇÃO ----------
 function renderMaterialOptions() {
+  if (!materialSelect) return;
+  
   const current = materialSelect.value;
   materialSelect.innerHTML = "";
 
-  Object.keys(prices).forEach(mat => {
+  // Ordena materiais alfabeticamente
+  const materiaisOrdenados = Object.keys(prices).sort((a, b) => 
+    a.localeCompare(b, 'pt-BR')
+  );
+
+  materiaisOrdenados.forEach(mat => {
     const option = document.createElement("option");
     option.value = mat;
     option.textContent = `${mat} (${formatBRL(prices[mat])}/kg)`;
@@ -167,6 +254,8 @@ function renderMaterialOptions() {
 }
 
 function renderPricesEditor() {
+  if (!pricesForm) return;
+  
   pricesForm.innerHTML = "";
   
   Object.keys(prices).forEach(mat => {
@@ -189,7 +278,189 @@ function renderPricesEditor() {
   });
 }
 
+// ---------- GERENCIAMENTO DE MATERIAIS ----------
+function renderMateriaisList() {
+  if (!materiaisList) return;
+  
+  materiaisList.innerHTML = "";
+  
+  // Ordena materiais alfabeticamente
+  const materiaisOrdenados = Object.keys(prices).sort((a, b) => 
+    a.localeCompare(b, 'pt-BR')
+  );
+  
+  materiaisOrdenados.forEach(material => {
+    const isPadrao = MATERIAIS_PADRAO.includes(material);
+    
+    const item = document.createElement("div");
+    item.className = "material-item";
+    
+    item.innerHTML = `
+      <div class="material-info">
+        <div>
+          <span class="material-name">${material}</span>
+          ${isPadrao ? '<span class="material-default">Padrão</span>' : ''}
+        </div>
+        <div class="material-price">
+          Preço: ${formatBRL(prices[material])}/kg
+        </div>
+      </div>
+      <div class="material-actions">
+        <button 
+          class="btn-remove-material"
+          data-material="${material}"
+          ${isPadrao ? 'disabled title="Material padrão não pode ser removido"' : ''}
+        >
+          Remover
+        </button>
+      </div>
+    `;
+    
+    // Event listener para remover material
+    if (!isPadrao) {
+      const btnRemover = item.querySelector(".btn-remove-material");
+      btnRemover.addEventListener("click", () => {
+        if (confirm(`Remover o material "${material}"?`)) {
+          removerMaterial(material);
+        }
+      });
+    }
+    
+    materiaisList.appendChild(item);
+  });
+  
+  // Mensagem se não houver materiais personalizados
+  const materiaisPersonalizados = Object.keys(prices).filter(m => !MATERIAIS_PADRAO.includes(m));
+  if (materiaisPersonalizados.length === 0) {
+    const mensagem = document.createElement("div");
+    mensagem.className = "material-item";
+    mensagem.style.textAlign = "center";
+    mensagem.style.color = "var(--muted)";
+    mensagem.innerHTML = `
+      <div class="material-info">
+        <div class="material-name">Nenhum material personalizado</div>
+        <div class="material-price">Adicione materiais acima</div>
+      </div>
+    `;
+    materiaisList.appendChild(mensagem);
+  }
+}
+
+function adicionarNovoMaterial() {
+  const nome = novoMaterialNome.value.trim();
+  const preco = parseNumber(novoMaterialPreco.value);
+  
+  // Validações
+  if (!nome) {
+    showToast("⚠️ Informe o nome do material", "erro");
+    novoMaterialNome.focus();
+    return;
+  }
+  
+  if (nome.length > 30) {
+    showToast("⚠️ Nome muito longo (máx. 30 caracteres)", "erro");
+    novoMaterialNome.focus();
+    return;
+  }
+  
+  if (preco === 0 || isNaN(preco)) {
+    showToast("⚠️ Informe um preço válido", "erro");
+    novoMaterialPreco.focus();
+    return;
+  }
+  
+  // Verifica se material já existe
+  if (prices[nome]) {
+    showToast(`⚠️ O material "${nome}" já existe`, "erro");
+    novoMaterialNome.focus();
+    return;
+  }
+  
+  // Adiciona novo material
+  prices[nome] = preco;
+  savePrices();
+  
+  // Atualiza interface
+  renderMaterialOptions();
+  renderMateriaisList();
+  
+  // Limpa campos
+  novoMaterialNome.value = "";
+  novoMaterialPreco.value = "";
+  
+  // Feedback
+  showToast(`✅ Material "${nome}" adicionado: ${formatBRL(preco)}/kg`, "sucesso");
+  novoMaterialNome.focus();
+}
+
+function removerMaterial(material) {
+  // Não permite remover materiais padrão
+  if (MATERIAIS_PADRAO.includes(material)) {
+    showToast(`⚠️ "${material}" é um material padrão e não pode ser removido`, "erro");
+    return;
+  }
+  
+  // Verifica se o material está sendo usado em compras
+  let emUso = false;
+  
+  // Verifica na compra ativa
+  if (compraAtiva && compraAtiva.itens) {
+    emUso = compraAtiva.itens.some(item => item.material === material);
+  }
+  
+  // Verifica nas compras do dia
+  if (!emUso) {
+    emUso = comprasDia.some(compra => 
+      compra.itens && compra.itens.some(item => item.material === material)
+    );
+  }
+  
+  if (emUso) {
+    showToast(`⚠️ Não é possível remover "${material}" porque está sendo usado em compras`, "erro");
+    return;
+  }
+  
+  // Remove do objeto de preços
+  delete prices[material];
+  savePrices();
+  
+  // Atualiza interface
+  renderMaterialOptions();
+  renderMateriaisList();
+  
+  // Feedback
+  showToast(`🗑️ Material "${material}" removido`, "info");
+}
+
+// ---------- COMPRAS ----------
+function cancelarCompra() {
+  if (!compraAtiva) {
+    showToast("ℹ️ Nenhuma compra ativa para cancelar", "info");
+    return;
+  }
+  
+  if (!confirm("Cancelar a compra atual? Todos os itens serão perdidos.")) return;
+  
+  const idCompra = compraAtiva.idCompra;
+  const numItens = compraAtiva.itens.length;
+  
+  compraAtiva = null;
+  saveCompraAtiva();
+  renderItens();
+  updateTotais();
+  atualizarEstadoUI();
+  
+  // Toast de confirmação
+  if (numItens > 0) {
+    showToast(`🗑️ Compra #${idCompra} cancelada (${numItens} itens removidos)`, "info");
+  } else {
+    showToast(`🗑️ Compra #${idCompra} cancelada`, "info");
+  }
+}
+
 function renderComprasDia() {
+  if (!comprasList) return;
+  
   comprasList.innerHTML = "";
   
   if (comprasDia.length === 0) {
@@ -201,11 +472,13 @@ function renderComprasDia() {
         </div>
       </li>
     `;
-    contadorComprasEl.textContent = "0 compras";
+    if (contadorComprasEl) contadorComprasEl.textContent = "0 compras";
     return;
   }
   
-  contadorComprasEl.textContent = `${comprasDia.length} compra${comprasDia.length !== 1 ? 's' : ''}`;
+  if (contadorComprasEl) {
+    contadorComprasEl.textContent = `${comprasDia.length} compra${comprasDia.length !== 1 ? 's' : ''}`;
+  }
   
   // Ordena por ID (mais recente primeiro)
   const comprasOrdenadas = [...comprasDia].sort((a, b) => {
@@ -260,6 +533,8 @@ function renderComprasDia() {
 }
 
 function mostrarDetalhesCompra(compra) {
+  if (!detalhesTitulo || !detalhesConteudo) return;
+  
   detalhesTitulo.textContent = `Compra #${compra.idCompra} - ${formatBRL(compra.totalCompra || 0)}`;
   
   let html = `
@@ -307,20 +582,22 @@ function mostrarDetalhesCompra(compra) {
 function atualizarEstadoUI() {
   const temCompraAtiva = !!compraAtiva;
 
-  btnNovaCompra.disabled = temCompraAtiva;
-  btnFinalizarCompra.disabled = !temCompraAtiva || compraAtiva.itens.length === 0;
+  if (btnNovaCompra) btnNovaCompra.disabled = temCompraAtiva;
+  if (btnFinalizarCompra) btnFinalizarCompra.disabled = !temCompraAtiva || (compraAtiva && compraAtiva.itens.length === 0);
   
   // Material sempre visível
-  materialSelect.disabled = false;
+  if (materialSelect) materialSelect.disabled = false;
 
   // Peso e ações só com compra ativa
-  pesoInput.disabled = !temCompraAtiva;
-  btnAddItem.disabled = !temCompraAtiva;
-  btnClearInputs.disabled = !temCompraAtiva;
+  if (pesoInput) pesoInput.disabled = !temCompraAtiva;
+  if (btnAddItem) btnAddItem.disabled = !temCompraAtiva;
+  if (btnClearInputs) btnClearInputs.disabled = !temCompraAtiva;
   
   // Mostra/oculta seção de compras finalizadas
   const comprasSection = document.getElementById("comprasFinalizadasSection");
-  comprasSection.style.display = comprasDia.length === 0 ? "none" : "block";
+  if (comprasSection) {
+    comprasSection.style.display = comprasDia.length === 0 ? "none" : "block";
+  }
 }
 
 // ---------- COMPRA ----------
@@ -340,10 +617,9 @@ function novaCompra() {
   
   // Feedback visual
   showToast(`📋 Compra #${seq} iniciada`, "info");
-  materialSelect.focus();
+  if (materialSelect) materialSelect.focus();
 }
 
-// Na função finalizarCompra():
 function finalizarCompra() {
   if (!compraAtiva || compraAtiva.itens.length === 0) return;
 
@@ -366,83 +642,6 @@ function finalizarCompra() {
   
   // Feedback
   showToast(`✅ Compra #${idCompra} finalizada: ${formatBRL(totalCompra)}`, "sucesso");
-}
-
-// Na função fecharDiaWhatsApp():
-function fecharDiaWhatsApp() {
-  if (comprasDia.length === 0) {
-    // Toast de erro se não houver compras
-    showToast("⚠️ Nenhuma compra finalizada no dia.", "erro");
-    return;
-  }
-  
-  // ... resto do código ...
-  
-  // No final, após limpar:
-  showToast("📤 Relatório enviado para WhatsApp!", "sucesso");
-}
-
-// Na função finalizarCompra():
-function finalizarCompra() {
-  if (!compraAtiva || compraAtiva.itens.length === 0) return;
-
-  compraAtiva.totalCompra = compraAtiva.itens.reduce((s, i) => s + i.total, 0);
-  compraAtiva.dataFinalizacao = new Date().toISOString();
-  comprasDia.push(compraAtiva);
-
-  saveComprasDia();
-  
-  const idCompra = compraAtiva.idCompra;
-  const totalCompra = compraAtiva.totalCompra;
-  
-  compraAtiva = null;
-  saveCompraAtiva();
-
-  renderItens();
-  renderComprasDia();
-  updateTotais();
-  atualizarEstadoUI();
-  
-  // Feedback
-  showToast(`✅ Compra #${idCompra} finalizada: ${formatBRL(totalCompra)}`, "sucesso");
-}
-
-// Na função fecharDiaWhatsApp():
-function fecharDiaWhatsApp() {
-  if (comprasDia.length === 0) {
-    // Toast de erro se não houver compras
-    showToast("⚠️ Nenhuma compra finalizada no dia.", "erro");
-    return;
-  }
-  
-  // ... resto do código ...
-  
-  // No final, após limpar:
-  showToast("📤 Relatório enviado para WhatsApp!", "sucesso");
-}
-
-function finalizarCompra() {
-  if (!compraAtiva || compraAtiva.itens.length === 0) return;
-
-  compraAtiva.totalCompra = compraAtiva.itens.reduce((s, i) => s + i.total, 0);
-  compraAtiva.dataFinalizacao = new Date().toISOString();
-  comprasDia.push(compraAtiva);
-
-  saveComprasDia();
-  
-  const idCompra = compraAtiva.idCompra;
-  const totalCompra = compraAtiva.totalCompra;
-  
-  compraAtiva = null;
-  saveCompraAtiva();
-
-  renderItens();
-  renderComprasDia();
-  updateTotais();
-  atualizarEstadoUI();
-  
-  // Feedback
-  showToast(`Compra #${idCompra} finalizada: ${formatBRL(totalCompra)}`);
 }
 
 // ---------- Itens ----------
@@ -455,7 +654,8 @@ function addItem() {
 
   // Validações
   if (!material || !prices[material]) {
-    alert("Selecione um material válido.");
+    showToast("⚠️ Material não encontrado. Atualize a lista.", "erro");
+    renderMaterialOptions(); // Força atualização
     return;
   }
 
@@ -480,7 +680,7 @@ function addItem() {
   atualizarEstadoUI();
 
   // FEEDBACK VISUAL - TOAST
-  showToast(`✅ ${material} adicionado: ${formatKg(pesoKg)} = ${formatBRL(totalItem)}`);
+  showToast(`✅ ${material} adicionado: ${formatKg(pesoKg)} = ${formatBRL(totalItem)}`, "sucesso");
 
   pesoInput.value = "";
   syncPriceAndTotal();
@@ -488,6 +688,8 @@ function addItem() {
 }
 
 function renderItens() {
+  if (!itensList) return;
+  
   itensList.innerHTML = "";
 
   if (!compraAtiva) {
@@ -548,10 +750,10 @@ function updateTotais() {
     ? compraAtiva.itens.reduce((s, i) => s + i.total, 0)
     : 0;
 
-  const totalDia = comprasDia.reduce((s, c) => s + c.totalCompra, 0);
+  const totalDia = comprasDia.reduce((s, c) => s + (c.totalCompra || 0), 0);
 
-  totalGeralEl.textContent = formatBRL(totalDia + totalCompra);
-  totalDiaEl.textContent = formatBRL(totalDia);
+  if (totalGeralEl) totalGeralEl.textContent = formatBRL(totalDia + totalCompra);
+  if (totalDiaEl) totalDiaEl.textContent = formatBRL(totalDia);
 }
 
 function syncPriceAndTotal() {
@@ -559,14 +761,15 @@ function syncPriceAndTotal() {
   const precoKg = prices[material] || 0;
   const pesoKg = parseNumber(pesoInput.value) || 0;
 
-  precoKgEl.textContent = formatBRL(precoKg);
-  totalItemEl.textContent = formatBRL(pesoKg * precoKg);
+  if (precoKgEl) precoKgEl.textContent = formatBRL(precoKg);
+  if (totalItemEl) totalItemEl.textContent = formatBRL(pesoKg * precoKg);
 }
 
 // ---------- WhatsApp ----------
 function fecharDiaWhatsApp() {
   if (comprasDia.length === 0) {
-    alert("Nenhuma compra finalizada no dia.");
+    // Toast de erro se não houver compras
+    showToast("⚠️ Nenhuma compra finalizada no dia.", "erro");
     return;
   }
 
@@ -609,7 +812,91 @@ function fecharDiaWhatsApp() {
   updateTotais();
   atualizarEstadoUI();
   
-  showToast("Dia fechado e enviado para WhatsApp!");
+  showToast("📤 Relatório enviado para WhatsApp!", "sucesso");
+}
+
+// ---------- PREÇOS ----------
+function salvarPrecos() {
+  const novos = {};
+  pricesForm.querySelectorAll("input").forEach(inp => {
+    novos[inp.dataset.material] = parseNumber(inp.value) || 0;
+  });
+  prices = novos;
+  savePrices();
+  renderMaterialOptions();
+  syncPriceAndTotal();
+  pricesDialog.close();
+  showToast("✅ Preços salvos com sucesso", "sucesso");
+}
+
+function resetarPrecos() {
+  if (!confirm("Restaurar preços padrão? Esta ação não pode ser desfeita.")) return;
+  
+  prices = { ...defaultPrices };
+  savePrices();
+  renderPricesEditor();
+  renderMaterialOptions();
+  syncPriceAndTotal();
+  showToast("✅ Preços restaurados para padrão", "sucesso");
+}
+
+// ---------- Storage ----------
+function loadPrices() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY_PRECOS);
+    
+    if (!saved) {
+      console.log("Nenhum preço salvo, usando padrão");
+      savePrices(defaultPrices);
+      return { ...defaultPrices };
+    }
+    
+    const parsed = JSON.parse(saved);
+    
+    if (!parsed || typeof parsed !== 'object' || Object.keys(parsed).length === 0) {
+      console.log("Preços inválidos, usando padrão");
+      savePrices(defaultPrices);
+      return { ...defaultPrices };
+    }
+    
+    // Garante que todos os materiais padrão existam
+    let merged = { ...defaultPrices };
+    
+    // Adiciona todos os materiais personalizados salvos
+    Object.keys(parsed).forEach(material => {
+      if (material && typeof material === 'string' && material.trim() !== '') {
+        merged[material] = parseFloat(parsed[material]) || 0;
+      }
+    });
+    
+    console.log("Preços mesclados:", merged);
+    savePrices(merged);
+    return merged;
+    
+  } catch (error) {
+    console.error("Erro ao carregar preços:", error);
+    savePrices(defaultPrices);
+    return { ...defaultPrices };
+  }
+}
+
+function savePrices() {
+  const paraSalvar = {};
+  Object.keys(prices).forEach(key => {
+    if (typeof key === 'string' && key.trim() !== '') {
+      paraSalvar[key] = prices[key];
+    }
+  });
+  
+  localStorage.setItem(STORAGE_KEY_PRECOS, JSON.stringify(paraSalvar));
+}
+
+function saveCompraAtiva() {
+  localStorage.setItem(STORAGE_KEY_COMPRA_ATIVA, JSON.stringify(compraAtiva));
+}
+
+function saveComprasDia() {
+  localStorage.setItem(STORAGE_KEY_COMPRAS_DIA, JSON.stringify(comprasDia));
 }
 
 // ---------- Utilidades ----------
@@ -630,13 +917,10 @@ function parseNumber(v) {
 }
 
 function showToast(mensagem, tipo = "sucesso") {
-  // Cria toast se não existir
-  let toast = document.getElementById("toast");
-  
-  if (!toast) {
-    toast = document.createElement("div");
-    toast.id = "toast";
-    document.body.appendChild(toast);
+  // Remove toast anterior se existir
+  let toastAntigo = document.getElementById("toast");
+  if (toastAntigo) {
+    toastAntigo.parentNode.removeChild(toastAntigo);
   }
   
   // Define cores baseadas no tipo
@@ -659,6 +943,11 @@ function showToast(mensagem, tipo = "sucesso") {
       textColor = "white";
   }
   
+  // Cria novo toast
+  let toast = document.createElement("div");
+  toast.id = "toast";
+  toast.textContent = mensagem;
+  
   // Aplica estilos
   toast.style.cssText = `
     position: fixed;
@@ -680,8 +969,6 @@ function showToast(mensagem, tipo = "sucesso") {
     border-left: 4px solid rgba(255,255,255,0.3);
   `;
   
-  toast.textContent = mensagem;
-  
   // Anima entrada
   setTimeout(() => {
     toast.style.opacity = "1";
@@ -700,6 +987,8 @@ function showToast(mensagem, tipo = "sucesso") {
       }
     }, 300);
   }, 3000);
+  
+  document.body.appendChild(toast);
 }
 
 // ---------- Sequência diária ----------
@@ -717,44 +1006,4 @@ function getNextSeqDia() {
 
   localStorage.setItem(STORAGE_KEY_SEQ_DIA, JSON.stringify(saved));
   return String(saved.seq).padStart(3, "0");
-}
-
-// ---------- Storage ----------
-function saveCompraAtiva() {
-  localStorage.setItem(STORAGE_KEY_COMPRA_ATIVA, JSON.stringify(compraAtiva));
-}
-
-function loadCompraAtiva() {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY_COMPRA_ATIVA));
-}
-
-function saveComprasDia() {
-  localStorage.setItem(STORAGE_KEY_COMPRAS_DIA, JSON.stringify(comprasDia));
-}
-
-function loadComprasDia() {
-  return JSON.parse(localStorage.getItem(STORAGE_KEY_COMPRAS_DIA)) || [];
-}
-
-function savePrices() {
-  localStorage.setItem(STORAGE_KEY_PRECOS, JSON.stringify(prices));
-}
-
-function loadPrices() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY_PRECOS));
-    if (!saved || Object.keys(saved).length === 0) {
-      localStorage.setItem(STORAGE_KEY_PRECOS, JSON.stringify(defaultPrices));
-      return { ...defaultPrices };
-    }
-    
-    // Garante que todos os materiais padrão existam
-    const merged = { ...defaultPrices, ...saved };
-    localStorage.setItem(STORAGE_KEY_PRECOS, JSON.stringify(merged));
-    return merged;
-    
-  } catch {
-    localStorage.setItem(STORAGE_KEY_PRECOS, JSON.stringify(defaultPrices));
-    return { ...defaultPrices };
-  }
 }
