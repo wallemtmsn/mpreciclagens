@@ -23,7 +23,7 @@ const defaultPrices = {
   "Ferro": 0.70,
   "Alumínio": 6.50,
   "Papelão": 0.35,
-  "Antimônio": 0.00,
+  "Antimônio": 2.00,
   "Cobre": 28.00,
   "Latão": 18.00,
   "Inox": 4.50
