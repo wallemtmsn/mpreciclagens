@@ -68,11 +68,56 @@ const novoMaterialPreco = document.getElementById("novoMaterialPreco");
 const btnAddMaterial = document.getElementById("btnAddMaterial");
 const btnFecharMateriais = document.getElementById("btnFecharMateriais");
 
+// ---------- Funções de debug para mobile ----------
+function debugMobile() {
+  console.log("=== DEBUG MOBILE ===");
+  console.log("localStorage disponível:", typeof localStorage !== 'undefined');
+  console.log("Preços no localStorage:", localStorage.getItem(STORAGE_KEY_PRECOS));
+  console.log("Screen width:", window.innerWidth);
+  console.log("User agent:", navigator.userAgent);
+  console.log("Elementos críticos:");
+  console.log("- materialSelect:", !!materialSelect);
+  console.log("- pesoInput:", !!pesoInput);
+  console.log("- precoKgEl:", !!precoKgEl);
+  console.log("=== FIM DEBUG ===");
+}
+
+function checkMobileIssues() {
+  if (window.innerWidth <= 768) { // Se for mobile
+    console.log("Modo mobile detectado - verificando dados...");
+    
+    // Verifica se os preços foram carregados
+    setTimeout(() => {
+      if (!prices || Object.keys(prices).length === 0) {
+        console.log("Preços não carregados no mobile - forçando recarga");
+        prices = loadPrices();
+        renderMaterialOptions();
+        syncPriceAndTotal();
+        showToast("📱 Modo mobile - Dados recarregados", "info");
+      }
+    }, 1000);
+  }
+}
+
 // ---------- Inicialização ----------
 document.addEventListener('DOMContentLoaded', init);
 
 function init() {
   console.log("Inicializando MP Reciclagem...");
+  
+  debugMobile();
+  
+  // Verifica se todos os elementos DOM existem
+  if (!materialSelect || !pesoInput || !precoKgEl) {
+    console.error("Elementos DOM críticos não encontrados!");
+    
+    // Tenta novamente após um delay (para mobile/loading lento)
+    setTimeout(() => {
+      console.log("Tentando novamente carregar elementos...");
+      init();
+    }, 500);
+    return;
+  }
   
   // Carrega dados do localStorage
   loadAllData();
@@ -91,6 +136,13 @@ function init() {
   console.log("Sistema inicializado com sucesso!");
   console.log("Materiais carregados:", Object.keys(prices).length);
   console.log("Lista de materiais:", Object.keys(prices));
+  
+  // Força atualização após 500ms para mobile (caso haja atraso)
+  setTimeout(() => {
+    renderMaterialOptions();
+    syncPriceAndTotal();
+    checkMobileIssues();
+  }, 500);
 }
 
 function loadAllData() {
@@ -117,20 +169,40 @@ function loadAllData() {
     prices = { ...defaultPrices };
     compraAtiva = null;
     comprasDia = [];
+    savePrices(); // Salva os preços padrão
   }
 }
 
 function setupEventListeners() {
+  // LOG para debug - mostra quais elementos estão disponíveis
+  console.log("Configurando eventos...");
+  console.log("materialSelect:", !!materialSelect);
+  console.log("pesoInput:", !!pesoInput);
+  console.log("btnGerenciarMateriais:", !!btnGerenciarMateriais);
+  
   // Event listeners básicos
   if (materialSelect) materialSelect.addEventListener("change", syncPriceAndTotal);
-  if (pesoInput) pesoInput.addEventListener("input", syncPriceAndTotal);
-  if (btnSuporte) btnSuporte.addEventListener("click", abrirSuporteWhatsApp);
+  if (pesoInput) {
+    pesoInput.addEventListener("input", syncPriceAndTotal);
+    // Adiciona touch event para mobile
+    pesoInput.addEventListener("touchstart", syncPriceAndTotal);
+  }
+  if (btnSuporte) {
+    btnSuporte.addEventListener("click", abrirSuporteWhatsApp);
+    // Touch para mobile
+    btnSuporte.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      abrirSuporteWhatsApp();
+    });
+  }
   
   // Foco no peso quando material é selecionado
   if (materialSelect) {
     materialSelect.addEventListener("change", () => {
       if (compraAtiva) {
-        setTimeout(() => pesoInput.focus(), 100);
+        setTimeout(() => {
+          if (pesoInput) pesoInput.focus();
+        }, 100);
       }
     });
   }
@@ -146,7 +218,13 @@ function setupEventListeners() {
   // Botões de limpeza
   if (btnClearInputs) {
     btnClearInputs.addEventListener("click", () => {
-      pesoInput.value = "";
+      if (pesoInput) pesoInput.value = "";
+      syncPriceAndTotal();
+    });
+    // Touch para mobile
+    btnClearInputs.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      if (pesoInput) pesoInput.value = "";
       syncPriceAndTotal();
     });
   }
@@ -154,27 +232,68 @@ function setupEventListeners() {
   // Cancelar compra
   if (btnClearAll) {
     btnClearAll.addEventListener("click", cancelarCompra);
+    btnClearAll.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      cancelarCompra();
+    });
   }
 
   // Botões principais
-  if (btnNovaCompra) btnNovaCompra.addEventListener("click", novaCompra);
-  if (btnFinalizarCompra) btnFinalizarCompra.addEventListener("click", finalizarCompra);
-  if (btnFecharDia) btnFecharDia.addEventListener("click", fecharDiaWhatsApp);
+  if (btnNovaCompra) {
+    btnNovaCompra.addEventListener("click", novaCompra);
+    btnNovaCompra.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      novaCompra();
+    });
+  }
+  
+  if (btnFinalizarCompra) {
+    btnFinalizarCompra.addEventListener("click", finalizarCompra);
+    btnFinalizarCompra.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      finalizarCompra();
+    });
+  }
+  
+  if (btnFecharDia) {
+    btnFecharDia.addEventListener("click", fecharDiaWhatsApp);
+    btnFecharDia.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      fecharDiaWhatsApp();
+    });
+  }
 
   // Preços - modal
   if (btnOpenPrices) {
     btnOpenPrices.addEventListener("click", () => {
       renderPricesEditor();
-      pricesDialog.showModal();
+      if (pricesDialog && typeof pricesDialog.showModal === 'function') {
+        pricesDialog.showModal();
+      }
+    });
+    btnOpenPrices.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      renderPricesEditor();
+      if (pricesDialog && typeof pricesDialog.showModal === 'function') {
+        pricesDialog.showModal();
+      }
     });
   }
 
   if (btnSavePrices) {
     btnSavePrices.addEventListener("click", salvarPrecos);
+    btnSavePrices.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      salvarPrecos();
+    });
   }
 
   if (btnResetPrices) {
     btnResetPrices.addEventListener("click", resetarPrecos);
+    btnResetPrices.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      resetarPrecos();
+    });
   }
 
   // Gerenciamento de materiais - CORRIGIDO
@@ -183,19 +302,70 @@ function setupEventListeners() {
     btnGerenciarMateriais.addEventListener("click", () => {
       console.log("Abrindo modal de materiais...");
       renderMateriaisList();
-      materiaisDialog.showModal();
+      if (materiaisDialog && typeof materiaisDialog.showModal === 'function') {
+        materiaisDialog.showModal();
+      } else {
+        console.error("Modal de materiais não disponível");
+        // Fallback para mobile
+        const container = document.getElementById('materiaisContainer');
+        if (container) {
+          container.style.display = 'block';
+          container.style.position = 'fixed';
+          container.style.top = '0';
+          container.style.left = '0';
+          container.style.width = '100%';
+          container.style.height = '100%';
+          container.style.zIndex = '1000';
+          container.style.background = 'white';
+          container.style.padding = '20px';
+          container.style.overflow = 'auto';
+        }
+      }
+    });
+    
+    // Touch event para mobile
+    btnGerenciarMateriais.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      console.log("Abrindo modal de materiais (touch)...");
+      renderMateriaisList();
+      if (materiaisDialog && typeof materiaisDialog.showModal === 'function') {
+        materiaisDialog.showModal();
+      }
     });
   } else {
-    console.error("btnGerenciarMateriais não encontrado!");
+    console.warn("btnGerenciarMateriais não encontrado - pode ser mobile");
+    // Cria fallback se necessário
+    setTimeout(() => {
+      const fallbackBtn = document.querySelector('[data-action="gerenciar-materiais"]');
+      if (fallbackBtn) {
+        fallbackBtn.addEventListener("click", () => {
+          renderMateriaisList();
+          alert("Gerenciar materiais - modal não disponível no mobile");
+        });
+        fallbackBtn.addEventListener("touchstart", (e) => {
+          e.preventDefault();
+          renderMateriaisList();
+          alert("Gerenciar materiais - modal não disponível no mobile");
+        });
+      }
+    }, 1000);
   }
   
   if (btnAddMaterial) {
     btnAddMaterial.addEventListener("click", adicionarNovoMaterial);
+    btnAddMaterial.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      adicionarNovoMaterial();
+    });
   }
   
   if (btnFecharMateriais) {
     btnFecharMateriais.addEventListener("click", () => {
-      materiaisDialog.close();
+      if (materiaisDialog) materiaisDialog.close();
+    });
+    btnFecharMateriais.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      if (materiaisDialog) materiaisDialog.close();
     });
   }
   
@@ -228,7 +398,10 @@ function abrirSuporteWhatsApp() {
 
 // ---------- RENDERIZAÇÃO ----------
 function renderMaterialOptions() {
-  if (!materialSelect) return;
+  if (!materialSelect) {
+    console.error("materialSelect não encontrado em renderMaterialOptions");
+    return;
+  }
   
   const current = materialSelect.value;
   materialSelect.innerHTML = "";
@@ -237,6 +410,16 @@ function renderMaterialOptions() {
   const materiaisOrdenados = Object.keys(prices).sort((a, b) => 
     a.localeCompare(b, 'pt-BR')
   );
+
+  if (materiaisOrdenados.length === 0) {
+    console.warn("Nenhum material disponível para renderizar");
+    const option = document.createElement("option");
+    option.value = "";
+    option.textContent = "Nenhum material cadastrado";
+    option.disabled = true;
+    materialSelect.appendChild(option);
+    return;
+  }
 
   materiaisOrdenados.forEach(mat => {
     const option = document.createElement("option");
@@ -280,7 +463,10 @@ function renderPricesEditor() {
 
 // ---------- GERENCIAMENTO DE MATERIAIS ----------
 function renderMateriaisList() {
-  if (!materiaisList) return;
+  if (!materiaisList) {
+    console.error("materiaisList não encontrado");
+    return;
+  }
   
   materiaisList.innerHTML = "";
   
@@ -289,13 +475,28 @@ function renderMateriaisList() {
     a.localeCompare(b, 'pt-BR')
   );
   
+  if (materiaisOrdenados.length === 0) {
+    const mensagem = document.createElement("div");
+    mensagem.className = "material-item";
+    mensagem.style.textAlign = "center";
+    mensagem.style.color = "var(--muted)";
+    mensagem.style.padding = "20px";
+    mensagem.innerHTML = `
+      <div class="material-info">
+        <div class="material-name">Nenhum material cadastrado</div>
+        <div class="material-price">Adicione materiais acima</div>
+      </div>
+    `;
+    materiaisList.appendChild(mensagem);
+    return;
+  }
+  
   materiaisOrdenados.forEach(material => {
     const isPadrao = MATERIAIS_PADRAO.includes(material);
     
     const item = document.createElement("div");
     item.className = "material-item";
     
-    // REMOVIDO: ${isPadrao ? '<span class="material-default">Padrão</span>' : ''}
     item.innerHTML = `
       <div class="material-info">
         <div>
@@ -316,58 +517,49 @@ function renderMateriaisList() {
       </div>
     `;
     
-    // Event listener para remover material - AGORA ATIVADO PARA TODOS
+    // Event listener para remover material
     const btnRemover = item.querySelector(".btn-remove-material");
-    btnRemover.addEventListener("click", () => {
-      removerMaterial(material);
-    });
+    if (btnRemover) {
+      btnRemover.addEventListener("click", () => {
+        removerMaterial(material);
+      });
+      btnRemover.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        removerMaterial(material);
+      });
+    }
     
     materiaisList.appendChild(item);
   });
-  
-  // Mensagem se não houver materiais
-  if (Object.keys(prices).length === 0) {
-    const mensagem = document.createElement("div");
-    mensagem.className = "material-item";
-    mensagem.style.textAlign = "center";
-    mensagem.style.color = "var(--muted)";
-    mensagem.innerHTML = `
-      <div class="material-info">
-        <div class="material-name">Nenhum material cadastrado</div>
-        <div class="material-price">Adicione materiais acima</div>
-      </div>
-    `;
-    materiaisList.appendChild(mensagem);
-  }
 }
 
 function adicionarNovoMaterial() {
-  const nome = novoMaterialNome.value.trim();
-  const preco = parseNumber(novoMaterialPreco.value);
+  const nome = novoMaterialNome ? novoMaterialNome.value.trim() : "";
+  const preco = novoMaterialPreco ? parseNumber(novoMaterialPreco.value) : 0;
   
   // Validações
   if (!nome) {
     showToast("⚠️ Informe o nome do material", "erro");
-    novoMaterialNome.focus();
+    if (novoMaterialNome) novoMaterialNome.focus();
     return;
   }
   
   if (nome.length > 30) {
     showToast("⚠️ Nome muito longo (máx. 30 caracteres)", "erro");
-    novoMaterialNome.focus();
+    if (novoMaterialNome) novoMaterialNome.focus();
     return;
   }
   
   if (preco === 0 || isNaN(preco)) {
     showToast("⚠️ Informe um preço válido", "erro");
-    novoMaterialPreco.focus();
+    if (novoMaterialPreco) novoMaterialPreco.focus();
     return;
   }
   
   // Verifica se material já existe
   if (prices[nome]) {
     showToast(`⚠️ O material "${nome}" já existe`, "erro");
-    novoMaterialNome.focus();
+    if (novoMaterialNome) novoMaterialNome.focus();
     return;
   }
   
@@ -380,12 +572,12 @@ function adicionarNovoMaterial() {
   renderMateriaisList();
   
   // Limpa campos
-  novoMaterialNome.value = "";
-  novoMaterialPreco.value = "";
+  if (novoMaterialNome) novoMaterialNome.value = "";
+  if (novoMaterialPreco) novoMaterialPreco.value = "";
   
   // Feedback
   showToast(`✅ Material "${nome}" adicionado: ${formatBRL(preco)}/kg`, "sucesso");
-  novoMaterialNome.focus();
+  if (novoMaterialNome) novoMaterialNome.focus();
 }
 
 function removerMaterial(material) {
@@ -541,26 +733,51 @@ function renderComprasDia() {
     `;
     
     // Clique para ver detalhes
-    li.querySelector(".meta").addEventListener("click", () => {
-      mostrarDetalhesCompra(compra);
-    });
+    const metaElement = li.querySelector(".meta");
+    if (metaElement) {
+      metaElement.addEventListener("click", () => {
+        mostrarDetalhesCompra(compra);
+      });
+      metaElement.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        mostrarDetalhesCompra(compra);
+      });
+    }
     
     // Botão para remover compra
-    li.querySelector(".btn-remover-compra").addEventListener("click", (e) => {
-      e.stopPropagation();
-      if (confirm(`Remover a compra #${compra.idCompra}?`)) {
-        const compraRemovida = comprasDia[idx];
-        const totalCompra = compraRemovida.totalCompra || 0;
-        
-        comprasDia.splice(idx, 1);
-        saveComprasDia();
-        renderComprasDia();
-        updateTotais();
-        
-        // Toast de confirmação
-        showToast(`🗑️ Compra #${compra.idCompra} removida do histórico\nTotal: ${formatBRL(totalCompra)}`, "info");
-      }
-    });
+    const btnRemover = li.querySelector(".btn-remover-compra");
+    if (btnRemover) {
+      btnRemover.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (confirm(`Remover a compra #${compra.idCompra}?`)) {
+          const compraRemovida = comprasDia[idx];
+          const totalCompra = compraRemovida.totalCompra || 0;
+          
+          comprasDia.splice(idx, 1);
+          saveComprasDia();
+          renderComprasDia();
+          updateTotais();
+          
+          // Toast de confirmação
+          showToast(`🗑️ Compra #${compra.idCompra} removida do histórico\nTotal: ${formatBRL(totalCompra)}`, "info");
+        }
+      });
+      btnRemover.addEventListener("touchstart", (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (confirm(`Remover a compra #${compra.idCompra}?`)) {
+          const compraRemovida = comprasDia[idx];
+          const totalCompra = compraRemovida.totalCompra || 0;
+          
+          comprasDia.splice(idx, 1);
+          saveComprasDia();
+          renderComprasDia();
+          updateTotais();
+          
+          showToast(`🗑️ Compra #${compra.idCompra} removida do histórico\nTotal: ${formatBRL(totalCompra)}`, "info");
+        }
+      });
+    }
     
     comprasList.appendChild(li);
   });
@@ -609,7 +826,9 @@ function mostrarDetalhesCompra(compra) {
   
   html += `</div>`;
   detalhesConteudo.innerHTML = html;
-  detalhesDialog.showModal();
+  if (detalhesDialog && typeof detalhesDialog.showModal === 'function') {
+    detalhesDialog.showModal();
+  }
 }
 
 // ---------- CONTROLE DE ESTADO UI ----------
@@ -682,9 +901,9 @@ function finalizarCompra() {
 function addItem() {
   if (!compraAtiva) return;
 
-  const material = materialSelect.value;
+  const material = materialSelect ? materialSelect.value : "";
   const precoKg = prices[material] || 0;
-  const pesoKg = parseNumber(pesoInput.value);
+  const pesoKg = pesoInput ? parseNumber(pesoInput.value) : 0;
 
   // Validações
   if (!material || !prices[material]) {
@@ -716,9 +935,9 @@ function addItem() {
   // FEEDBACK VISUAL - TOAST
   showToast(`✅ ${material} adicionado: ${formatKg(pesoKg)} = ${formatBRL(totalItem)}`, "sucesso");
 
-  pesoInput.value = "";
+  if (pesoInput) pesoInput.value = "";
   syncPriceAndTotal();
-  pesoInput.focus(); // Foco automático para próximo item
+  if (pesoInput) pesoInput.focus(); // Foco automático para próximo item
 }
 
 function renderItens() {
@@ -766,19 +985,36 @@ function renderItens() {
       <button class="icon-btn" aria-label="Remover item">🗑</button>
     `;
 
-    li.querySelector("button").onclick = () => {
-      // Salva os dados do item antes de remover (para o toast)
-      const itemRemovido = compraAtiva.itens[idx];
+    const btnRemover = li.querySelector("button");
+    if (btnRemover) {
+      btnRemover.onclick = () => {
+        // Salva os dados do item antes de remover (para o toast)
+        const itemRemovido = compraAtiva.itens[idx];
+        
+        compraAtiva.itens.splice(idx, 1);
+        saveCompraAtiva();
+        renderItens();
+        updateTotais();
+        atualizarEstadoUI();
+        
+        // Mostra toast de confirmação
+        showToast(`🗑️ Item removido: ${itemRemovido.material} (${formatKg(itemRemovido.pesoKg)})`, "info");
+      };
       
-      compraAtiva.itens.splice(idx, 1);
-      saveCompraAtiva();
-      renderItens();
-      updateTotais();
-      atualizarEstadoUI();
-      
-      // Mostra toast de confirmação
-      showToast(`🗑️ Item removido: ${itemRemovido.material} (${formatKg(itemRemovido.pesoKg)})`, "info");
-    };
+      // Touch event para mobile
+      btnRemover.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        const itemRemovido = compraAtiva.itens[idx];
+        
+        compraAtiva.itens.splice(idx, 1);
+        saveCompraAtiva();
+        renderItens();
+        updateTotais();
+        atualizarEstadoUI();
+        
+        showToast(`🗑️ Item removido: ${itemRemovido.material} (${formatKg(itemRemovido.pesoKg)})`, "info");
+      });
+    }
 
     itensList.appendChild(li);
   });
@@ -797,9 +1033,9 @@ function updateTotais() {
 }
 
 function syncPriceAndTotal() {
-  const material = materialSelect.value;
+  const material = materialSelect ? materialSelect.value : "";
   const precoKg = prices[material] || 0;
-  const pesoKg = parseNumber(pesoInput.value) || 0;
+  const pesoKg = pesoInput ? parseNumber(pesoInput.value) : 0;
 
   if (precoKgEl) precoKgEl.textContent = formatBRL(precoKg);
   if (totalItemEl) totalItemEl.textContent = formatBRL(pesoKg * precoKg);
@@ -918,14 +1154,16 @@ function fecharDiaWhatsApp() {
 // ---------- PREÇOS ----------
 function salvarPrecos() {
   const novos = {};
-  pricesForm.querySelectorAll("input").forEach(inp => {
-    novos[inp.dataset.material] = parseNumber(inp.value) || 0;
-  });
+  if (pricesForm) {
+    pricesForm.querySelectorAll("input").forEach(inp => {
+      novos[inp.dataset.material] = parseNumber(inp.value) || 0;
+    });
+  }
   prices = novos;
   savePrices();
   renderMaterialOptions();
   syncPriceAndTotal();
-  pricesDialog.close();
+  if (pricesDialog) pricesDialog.close();
   showToast("✅ Preços salvos com sucesso", "sucesso");
 }
 
@@ -947,16 +1185,20 @@ function loadPrices() {
     
     if (!saved) {
       console.log("Nenhum preço salvo, usando padrão");
-      savePrices(defaultPrices);
-      return { ...defaultPrices };
+      const defaultCopy = { ...defaultPrices };
+      prices = defaultCopy;
+      savePrices();
+      return defaultCopy;
     }
     
     const parsed = JSON.parse(saved);
     
     if (!parsed || typeof parsed !== 'object' || Object.keys(parsed).length === 0) {
       console.log("Preços inválidos, usando padrão");
-      savePrices(defaultPrices);
-      return { ...defaultPrices };
+      const defaultCopy = { ...defaultPrices };
+      prices = defaultCopy;
+      savePrices();
+      return defaultCopy;
     }
     
     // Garante que todos os materiais padrão existam
@@ -969,14 +1211,16 @@ function loadPrices() {
       }
     });
     
-    console.log("Preços mesclados:", merged);
-    savePrices(merged);
+    console.log("Preços mesclados carregados:", merged);
+    prices = merged;
     return merged;
     
   } catch (error) {
     console.error("Erro ao carregar preços:", error);
-    savePrices(defaultPrices);
-    return { ...defaultPrices };
+    const defaultCopy = { ...defaultPrices };
+    prices = defaultCopy;
+    savePrices();
+    return defaultCopy;
   }
 }
 
@@ -1012,8 +1256,19 @@ function formatKg(v) {
 }
 
 function parseNumber(v) {
-  if (!v) return 0;
-  return Number(String(v).replace(",", "."));
+  if (!v && v !== 0) return 0;
+  
+  // Converte para string e trata vírgulas
+  let str = String(v).trim();
+  
+  // Remove todos os pontos (separadores de milhar) e substitui vírgula por ponto
+  str = str.replace(/\./g, '').replace(',', '.');
+  
+  // Remove caracteres não numéricos exceto ponto e sinal
+  str = str.replace(/[^\d.-]/g, '');
+  
+  const num = parseFloat(str);
+  return isNaN(num) ? 0 : num;
 }
 
 function showToast(mensagem, tipo = "sucesso", duracao = 3000) {
@@ -1076,16 +1331,25 @@ function showToast(mensagem, tipo = "sucesso", duracao = 3000) {
     border-left: 4px solid rgba(255,255,255,0.3);
   `;
   
+  // Para mobile, ajusta posição
+  if (window.innerWidth <= 768) {
+    toast.style.top = "10px";
+    toast.style.right = "10px";
+    toast.style.left = "10px";
+    toast.style.maxWidth = "calc(100% - 20px)";
+    toast.style.transform = "translateY(-100px)";
+  }
+  
   // Anima entrada
   setTimeout(() => {
     toast.style.opacity = "1";
-    toast.style.transform = "translateX(0)";
+    toast.style.transform = window.innerWidth <= 768 ? "translateY(0)" : "translateX(0)";
   }, 10);
   
   // Remove após a duração especificada
   setTimeout(() => {
     toast.style.opacity = "0";
-    toast.style.transform = "translateX(100px)";
+    toast.style.transform = window.innerWidth <= 768 ? "translateY(-100px)" : "translateX(100px)";
     
     // Remove completamente após animação
     setTimeout(() => {
@@ -1114,3 +1378,38 @@ function getNextSeqDia() {
   localStorage.setItem(STORAGE_KEY_SEQ_DIA, JSON.stringify(saved));
   return String(saved.seq).padStart(3, "0");
 }
+
+// ---------- Função auxiliar para recarregar no mobile ----------
+function forceReloadOnMobile() {
+  if (window.innerWidth <= 768) {
+    // Adiciona botão de recarregar se detectar problemas
+    if (!document.getElementById('mobile-reload-btn')) {
+      const btn = document.createElement('button');
+      btn.id = 'mobile-reload-btn';
+      btn.innerHTML = '🔄 Recarregar Dados';
+      btn.style.cssText = `
+        position: fixed;
+        bottom: 70px;
+        right: 10px;
+        background: var(--primary);
+        color: white;
+        border: none;
+        padding: 8px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        z-index: 999;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      `;
+      btn.onclick = function() {
+        prices = loadPrices();
+        renderMaterialOptions();
+        syncPriceAndTotal();
+        showToast("📱 Dados recarregados para mobile", "info");
+      };
+      document.body.appendChild(btn);
+    }
+  }
+}
+
+// Inicializa após carregamento
+setTimeout(forceReloadOnMobile, 2000);
